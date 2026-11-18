@@ -1,0 +1,7 @@
+Cust ID,Customer Name,DOB,Email,Mobile,PAN,Segment,City,Status
+C001,Asha Verma,1985-03-12,asha.verma@example.com,9810000001,ABCDE1234F,Premium,Mumbai,Active
+C002,Rohan Iyer,1990-07-25,rohan.iyer@example.com,9810000002,BCDEF2345G,Retail,Pune,Active
+C003,Meera Nair,1978-11-02,meera.nair@example.com,9810000003,CDEFG3456H,Premium,Kochi,Active
+C004,Karan Shah,1995-01-30,karan.shah@example.com,9810000004,DEFGH4567J,Retail,Ahmedabad,Dormant
+C005,Isha Kapoor,1988-09-17,isha.kapoor@example.com,9810000005,EFGHI5678K,Retail,Delhi,Active
+C006,Vikram Rao,1972-05-08,vikram.rao@example.com,9810000006,FGHIJ6789L,Premium,Bengaluru,Active

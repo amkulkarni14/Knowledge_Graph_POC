@@ -1,0 +1,57 @@
+{
+  "ontology_id": "retail",
+  "namespace": "com.example.retail",
+  "name": "Retail Customer Graph",
+  "version": 1,
+  "status": "draft",
+  "created_by": "data.modeller",
+  "change_note": "Manual draft: Customer, Order and PLACED created in the Ontology Studio",
+  "classes": [
+    {
+      "name": "Customer",
+      "description": "A person who buys from us",
+      "mapping": {
+        "source_table": "public.customers",
+        "key_columns": ["customer_id"],
+        "resolution_columns": ["email"],
+        "watermark_column": "updated_at"
+      },
+      "attributes": [
+        {"name": "customer_id", "data_type": "integer", "required": true, "source_column": "customer_id"},
+        {"name": "full_name", "data_type": "string", "required": true, "source_column": "full_name", "normalize": "title"},
+        {"name": "email", "data_type": "string", "required": true, "source_column": "email", "normalize": "lower", "pii": true},
+        {"name": "phone", "data_type": "string", "source_column": "phone", "pii": true}
+      ]
+    },
+    {
+      "name": "Order",
+      "description": "A purchase transaction",
+      "mapping": {
+        "source_table": "public.orders",
+        "key_columns": ["order_id"],
+        "watermark_column": "updated_at"
+      },
+      "attributes": [
+        {"name": "order_id", "data_type": "integer", "required": true, "source_column": "order_id"},
+        {"name": "order_date", "data_type": "date", "required": true, "source_column": "order_date"},
+        {"name": "status", "data_type": "string", "required": true, "source_column": "status", "normalize": "upper"},
+        {"name": "total_amount", "data_type": "decimal", "source_column": "total_amount"}
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "name": "PLACED",
+      "source_class": "Customer",
+      "target_class": "Order",
+      "cardinality": "1:N",
+      "description": "Customer placed an order",
+      "mapping": {
+        "kind": "foreign_key",
+        "table": "public.orders",
+        "source_key_columns": ["customer_id"],
+        "target_key_columns": ["order_id"]
+      }
+    }
+  ]
+}

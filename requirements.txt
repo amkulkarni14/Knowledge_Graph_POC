@@ -1,0 +1,19 @@
+# Core
+networkx>=3.3
+pydantic>=2.7
+python-dotenv>=1.0
+
+# PostgreSQL access (Stage 2/3/11)
+psycopg[binary]>=3.2
+psycopg-pool>=3.2
+
+# AI ontology suggestions (Stage 6)
+groq>=0.11
+
+# UI (all stages)
+streamlit>=1.40
+pandas>=2.2
+pyvis>=0.3.2
+
+# Optional: push the validated graph into Neo4j (Stage 16)
+neo4j>=5.20

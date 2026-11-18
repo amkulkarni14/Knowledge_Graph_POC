@@ -1,0 +1,9 @@
+Enquiry ID,Cust ID,Enquiry Date,Purpose,Amount,Lender
+Q1,C001,2026-02-14,Home Loan,5000000,HDFC Bank
+Q2,C002,2026-03-02,Credit Card,100000,Axis Bank
+Q3,C002,2026-03-05,Personal Loan,300000,ICICI Bank
+Q4,C004,2026-06-18,Auto Loan,750000,SBI
+Q5,C005,2026-07-21,Credit Card,150000,HDFC Bank
+Q6,C006,2026-08-09,Home Loan,6200000,SBI
+Q7,C003,2026-01-11,Personal Loan,500000,ICICI Bank
+Q8,C005,2026-09-30,Personal Loan,200000,Axis Bank

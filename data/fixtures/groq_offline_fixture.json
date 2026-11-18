@@ -1,0 +1,74 @@
+{
+  "classes": [
+    {"name": "Product", "description": "An item that can be ordered", "source_table": "public.products",
+     "key_columns": ["product_id"],
+     "attributes": [
+       {"name": "product_id", "data_type": "integer", "source_column": "product_id", "required": true},
+       {"name": "product_name", "data_type": "string", "source_column": "product_name", "required": true},
+       {"name": "category", "data_type": "string", "source_column": "category", "required": false},
+       {"name": "unit_price", "data_type": "decimal", "source_column": "unit_price", "required": true}],
+     "confidence": 0.96, "rationale": "products has a PK and is referenced by order_items"},
+    {"name": "Location", "description": "A city where customers live or organisations are based", "source_table": "public.locations",
+     "key_columns": ["location_id"],
+     "attributes": [
+       {"name": "location_id", "data_type": "integer", "source_column": "location_id", "required": true},
+       {"name": "city", "data_type": "string", "source_column": "city", "required": true},
+       {"name": "state", "data_type": "string", "source_column": "state", "required": false},
+       {"name": "country", "data_type": "string", "source_column": "country", "required": true}],
+     "confidence": 0.93, "rationale": "locations is referenced by customers and organizations"},
+    {"name": "Organization", "description": "A company: employer of customers or manufacturer of products", "source_table": "public.organizations",
+     "key_columns": ["org_id"],
+     "attributes": [
+       {"name": "org_id", "data_type": "integer", "source_column": "org_id", "required": true},
+       {"name": "org_name", "data_type": "string", "source_column": "org_name", "required": true},
+       {"name": "industry", "data_type": "string", "source_column": "industry", "required": false}],
+     "confidence": 0.91, "rationale": "organizations is referenced by customers and products"},
+    {"name": "Client", "description": "A client of the business", "source_table": "public.customers",
+     "key_columns": ["customer_id"],
+     "attributes": [{"name": "customer_id", "data_type": "integer", "source_column": "customer_id", "required": true}],
+     "confidence": 0.41, "rationale": "customers looks like a client list"},
+    {"name": "Supplier", "description": "A company that supplies products", "source_table": "public.suppliers",
+     "key_columns": ["supplier_id"],
+     "attributes": [{"name": "supplier_id", "data_type": "integer", "source_column": "supplier_id", "required": true}],
+     "confidence": 0.52, "rationale": "retail schemas usually have suppliers"}
+  ],
+  "relationships": [
+    {"name": "CONTAINS", "source_class": "Order", "target_class": "Product", "cardinality": "M:N",
+     "mapping_kind": "join_table", "mapping_table": "public.order_items",
+     "source_key_columns": ["order_id"], "target_key_columns": ["product_id"], "property_columns": ["quantity", "unit_price"],
+     "confidence": 0.97, "rationale": "order_items is a bridge table between orders and products"},
+    {"name": "LOCATED_IN", "source_class": "Customer", "target_class": "Location", "cardinality": "N:1",
+     "mapping_kind": "foreign_key", "mapping_table": "public.customers",
+     "source_key_columns": ["customer_id"], "target_key_columns": ["location_id"], "property_columns": [],
+     "confidence": 0.94, "rationale": "FK customers.location_id -> locations"},
+    {"name": "WORKS_FOR", "source_class": "Customer", "target_class": "Organization", "cardinality": "N:1",
+     "mapping_kind": "foreign_key", "mapping_table": "public.customers",
+     "source_key_columns": ["customer_id"], "target_key_columns": ["org_id"], "property_columns": [],
+     "confidence": 0.78, "rationale": "FK customers.org_id -> organizations"},
+    {"name": "MANUFACTURED_BY", "source_class": "Product", "target_class": "Organization", "cardinality": "N:1",
+     "mapping_kind": "foreign_key", "mapping_table": "public.products",
+     "source_key_columns": ["product_id"], "target_key_columns": ["manufacturer_id"], "property_columns": [],
+     "confidence": 0.88, "rationale": "FK products.manufacturer_id -> organizations"},
+    {"name": "HEADQUARTERED_IN", "source_class": "Organization", "target_class": "Location", "cardinality": "N:1",
+     "mapping_kind": "foreign_key", "mapping_table": "public.organizations",
+     "source_key_columns": ["org_id"], "target_key_columns": ["hq_location_id"], "property_columns": [],
+     "confidence": 0.55, "rationale": "FK organizations.hq_location_id -> locations"},
+    {"name": "REFERRED", "source_class": "Customer", "target_class": "Customer", "cardinality": "1:N",
+     "mapping_kind": "foreign_key", "mapping_table": "public.customers",
+     "source_key_columns": ["referred_by"], "target_key_columns": ["customer_id"], "property_columns": [],
+     "confidence": 0.83, "rationale": "self-referencing FK customers.referred_by"},
+    {"name": "SHIPPED_TO", "source_class": "Order", "target_class": "Location", "cardinality": "N:1",
+     "mapping_kind": "foreign_key", "mapping_table": "public.orders",
+     "source_key_columns": ["order_id"], "target_key_columns": ["shipping_location_id"], "property_columns": [],
+     "confidence": 0.66, "rationale": "orders are usually shipped somewhere"}
+  ],
+  "missing_attributes": [
+    {"class_name": "Customer", "attribute": {"name": "segment", "data_type": "string", "source_column": "segment", "required": false},
+     "confidence": 0.90, "rationale": "customers.segment is not mapped yet"},
+    {"class_name": "Customer", "attribute": {"name": "loyalty_points", "data_type": "integer", "source_column": "loyalty_points", "required": false},
+     "confidence": 0.62, "rationale": "retail customers usually have loyalty points"}
+  ],
+  "possible_duplicates": [
+    {"class_a": "Customer", "class_b": "Client", "reason": "Both describe public.customers", "confidence": 0.80}
+  ]
+}
