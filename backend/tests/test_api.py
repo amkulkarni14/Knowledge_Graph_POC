@@ -11,18 +11,21 @@ import pytest
 from fastapi.testclient import TestClient
 from backend.app.core.config import ApiSettings
 from backend.app.main import create_app
+from backend.tests.helpers import make_settings, login_headers
 from backend.app.services import workflow
 from kg_pipeline.config import settings as pipeline_settings
 
 
 @pytest.fixture
 def app(tmp_path):
-    return create_app(ApiSettings(storage_root=tmp_path / "sessions"))
+    return create_app(make_settings(storage_root=tmp_path / "sessions"))
 
 
 @pytest.fixture
 def client(app):
+    """Signed-in client: all routes except /login and /health require a bearer token."""
     with TestClient(app, raise_server_exceptions=False) as client:
+        client.headers.update(login_headers(client))
         yield client
 
 
@@ -156,10 +159,10 @@ def test_upload_filename_and_type_validation(client, filename):
 
 
 def test_upload_limit_before_parser(tmp_path):
-    app = create_app(ApiSettings(storage_root=tmp_path, max_request_bytes=512))
+    app = create_app(make_settings(storage_root=tmp_path, max_request_bytes=512))
     with TestClient(app) as client:
         response = client.post("/api/v1/sessions", content=b"x" * 513,
-                               headers={"Content-Type": "application/json"})
+                               headers={"Content-Type": "application/json", **login_headers(client)})
         assert response.status_code == 413
 
 

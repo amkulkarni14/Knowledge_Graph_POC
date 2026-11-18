@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Knowledge Graph Platform API",
-    "description": "Process-local workflow sessions; use one worker. No authentication is implemented.",
+    "description": "Process-local workflow sessions; use one worker. Sign in at /api/v1/login and send 'Authorization: Bearer <token>'.",
     "version": "1.0.0"
   },
   "paths": {
@@ -21,6 +21,82 @@
                 "schema": {}
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_AuthUserView_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           }
         }
       }
@@ -3897,6 +3973,19 @@
         ],
         "title": "AttributesRequest"
       },
+      "AuthUserView": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "title": "AuthUserView"
+      },
       "BuildRequest": {
         "properties": {
           "batch_size": {
@@ -4294,6 +4383,28 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
       "Ontology": {
         "properties": {
           "ontology_id": {
@@ -4670,6 +4781,18 @@
           "name"
         ],
         "title": "RenameRequest"
+      },
+      "Result_AuthUserView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AuthUserView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[AuthUserView]"
       },
       "Result_GraphView_": {
         "properties": {
@@ -5181,6 +5304,28 @@
           "columns"
         ],
         "title": "TableInfo"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "user"
+        ],
+        "title": "TokenResponse"
       },
       "ValidationError": {
         "properties": {

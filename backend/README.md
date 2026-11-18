@@ -17,7 +17,19 @@ python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 1
 
 Use one worker. Sessions, source connections, editor state and background-job status are process-local and expire after one hour of inactivity. A restart loses those handles. Saved artifacts remain on disk, but there is no session recovery API.
 
-No authentication or authorization is implemented because the existing prototype has none. Bind to loopback for local development. Session UUIDs are not authenticated identities; author/reviewer names are workflow labels, not verified user identities. Add authentication/access control before shared deployment.
+## Authentication (JWT)
+
+Every route except `GET /api/v1/health` and `POST /api/v1/login` requires `Authorization: Bearer <token>`; a missing, invalid, expired or logged-out token returns `401`.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/login` | `{"username","password"}` returns `{"access_token","token_type":"bearer","user":{"username"}}`, or `401` |
+| `GET /api/v1/me` | Validates the current token (used by the frontend on page refresh) |
+| `POST /api/v1/logout` | Revokes the token (process-local deny-list, like sessions) |
+
+The default account is configured in `.env` (`AUTH_DEFAULT_USERNAME`, `AUTH_DEFAULT_PASSWORD_HASH` as a bcrypt hash). For local development it is `admin` / `admin`; change it before any shared use. Authentication is in `backend/app/core/security.py` (`authenticate()` is the single place to replace with a users-table lookup). If `JWT_SECRET_KEY` is empty a random key is generated per start, so tokens do not survive a restart.
+
+Authentication is not authorization: there are no roles, and session UUIDs are not identities. Author/reviewer names are workflow labels, not verified identities. Bind to loopback for local development and serve over HTTPS if shared.
 
 ## Configuration
 
@@ -27,6 +39,8 @@ Set optional variables in the shell before starting the server. Existing environ
 |---|---|---|
 | KG_API_STORAGE_DIR | repository storage/api_sessions | Session-specific artifacts |
 | KG_API_CORS_ORIGINS | http://localhost:5173,http://127.0.0.1:5173 | Explicit comma-separated frontend origins |
+| JWT_SECRET_KEY, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES | Random key per start, HS256, 60 | Token signing and lifetime |
+| AUTH_DEFAULT_USERNAME, AUTH_DEFAULT_PASSWORD_HASH | admin, unset (login disabled) | Default account (bcrypt hash) |
 | GROQ_API_KEY, GROQ_MODEL | Existing pipeline settings | Optional live suggestions |
 | NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD | Unconfigured | Optional server-side Neo4j loading |
 | KG_MAX_UPLOAD_FILES, KG_MAX_UPLOAD_MB, KG_MAX_UPLOAD_ROWS | Existing pipeline defaults | Source upload limits |

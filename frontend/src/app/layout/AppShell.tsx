@@ -27,14 +27,17 @@ import {
   ChevronDown,
   ChevronRight,
   type LucideIcon,
+  LogOut,
 } from "lucide-react";
 import { useSessionStore, useUiStore, useGraphStore } from "../store";
+import { useAuthStore } from "../authStore";
 import {
   useSession,
   useData,
   useAction,
 } from "../../shared/hooks/useWorkspace";
 import { sessionsApi } from "../../api/sessionsApi";
+import { authApi } from "../../api/authApi";
 import { stageRoutes } from "../../constants/stages.constants";
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
@@ -95,6 +98,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const graphView = new URLSearchParams(location.search).get("view");
   const [reset, setReset] = useState(false);
+  const authUser = useAuthStore((s) => s.user?.username);
+  async function signOut() {
+    try {
+      // Revoke the token server-side first; it is still attached to this request.
+      await authApi.logout();
+    } catch {
+      /* already expired or backend unreachable: sign out locally regardless */
+    } finally {
+      // App clears the workspace and query cache when the token disappears.
+      useAuthStore.getState().logout();
+    }
+  }
   useEffect(() => {
     if (
       session.error instanceof ApiError &&
@@ -294,6 +309,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <RotateCcw size={16} />
               </button>
             )}
+            <button
+              className="icon-button"
+              aria-label="Sign out"
+              title="Sign out"
+              onClick={() => void signOut()}
+            >
+              <LogOut size={16} />
+            </button>
+            <span className="workspace-badge">{authUser}</span>
           </div>
         </header>
         {id && stages.data && (

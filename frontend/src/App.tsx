@@ -1,7 +1,11 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "./app/layout/AppShell";
-import { useSessionStore } from "./app/store";
+import { useGraphStore, useSessionStore } from "./app/store";
+import { useAuthStore } from "./app/authStore";
+import { authApi } from "./api/authApi";
+import { LoginPage } from "./features/auth/LoginPage";
 import { Feedback } from "./shared/ui/WorkspaceUi";
 const Overview = lazy(() => import("./features/overview/OverviewPage"));
 const Scope = lazy(() => import("./features/projects/ScopePage"));
@@ -13,6 +17,35 @@ const Build = lazy(() => import("./features/build/BuildPage"));
 const Storage = lazy(() => import("./features/build/StoragePage"));
 const Explorer = lazy(() => import("./features/query/ExplorerPage"));
 export function App() {
+  const token = useAuthStore((s) => s.token);
+  const client = useQueryClient();
+  // Whenever the session ends (sign-out, expired token, 401) drop all per-user state.
+  useEffect(() => {
+    if (token) return;
+    useSessionStore.getState().setSession(null);
+    useGraphStore.getState().reset();
+    client.clear();
+  }, [token, client]);
+  if (!token) return <LoginPage />;
+  return <AuthGate token={token} />;
+}
+
+// Validates a stored token with the backend before showing the workspace, so a
+// refresh with an expired or revoked token lands on the login page, not a broken app.
+function AuthGate({ token }: { token: string }) {
+  const me = useQuery({
+    queryKey: ["auth", "me", token],
+    queryFn: ({ signal }) => authApi.me(signal),
+    staleTime: Infinity,
+    retry: false,
+  });
+  if (me.isPending) return <Feedback pending />;
+  // A 401 has already cleared the token (client.ts). Other failures such as an
+  // unreachable backend fall through to the workspace, which reports them itself.
+  return <Workspace />;
+}
+
+function Workspace() {
   const id = useSessionStore((s) => s.id);
   return (
     <AppShell>

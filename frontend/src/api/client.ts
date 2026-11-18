@@ -1,10 +1,18 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { z } from "zod";
 import type { JsonObject } from "../types/common.types";
+import { useAuthStore } from "../app/authStore";
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1",
   timeout: 30000,
   paramsSerializer: { indexes: null },
+});
+// Registered first so it runs last (axios runs request interceptors in reverse),
+// i.e. after the per-session queue below, using the freshest token.
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token;
+  if (token) config.headers.set("Authorization", `Bearer ${token}`);
+  return config;
 });
 // The existing backend locks reads as well as mutations. Queue per session;
 // lock-free status/events/session views remain available during background builds.
@@ -88,6 +96,13 @@ api.interceptors.response.use(
               : "Cannot reach the API. Check that the backend is running.",
             error.response?.status,
           );
+      // An expired or revoked token ends the session; App then shows the login page.
+      // A failed login attempt is also a 401 but must not be treated as an expiry.
+      if (
+        error.response?.status === 401 &&
+        !error.config?.url?.endsWith("/login")
+      )
+        useAuthStore.getState().logout();
       // Release sensitive request references retained by Axios errors.
       if (error.config) error.config.data = undefined;
       return Promise.reject(normalized);
