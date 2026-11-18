@@ -68,7 +68,7 @@ export default function StoragePage() {
   return (
     <>
       <PageHeader
-        eyebrow="16 / GRAPH CONSTRUCTION"
+        eyebrow="Graph Construction"
         title="Storage & snapshots"
         description="Persist your validated graph, inspect snapshot history, and download artifacts. Optional Neo4j loading uses server-managed credentials."
       />

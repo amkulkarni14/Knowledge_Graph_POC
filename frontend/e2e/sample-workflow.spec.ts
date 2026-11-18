@@ -12,7 +12,7 @@ test("sample workflow through explicit review, approval, build, snapshots, and e
     page.getByRole("heading", { name: "Workspace overview" }),
   ).toBeVisible();
   await page
-    .getByRole("link", { name: "01 Goal & Scope", exact: true })
+    .getByRole("link", { name: "Goal & Scope", exact: true })
     .click();
   await page.getByLabel("Project name").fill("Retail");
   await page
@@ -21,17 +21,17 @@ test("sample workflow through explicit review, approval, build, snapshots, and e
   await page.getByRole("button", { name: "Save scope" }).click();
   await expect(page.getByText("Scope saved.")).toBeVisible();
   await page
-    .getByRole("link", { name: "02 Connect Safely", exact: true })
+    .getByRole("link", { name: "Data Sources", exact: true })
     .click();
   await page.getByRole("button", { name: "Connect retail sample" }).click();
   await expect(page.getByText("sample", { exact: true }).first()).toBeVisible();
   await page
-    .getByRole("link", { name: "03 Schema Extraction", exact: true })
+    .getByRole("link", { name: "Schema Extraction", exact: true })
     .click();
   await page.getByRole("button", { name: "Extract metadata" }).click();
   await expect(page.getByLabel("Qualified table")).toBeEnabled();
   await page
-    .getByRole("link", { name: "04 Schema Analysis", exact: true })
+    .getByRole("link", { name: "Schema Analysis", exact: true })
     .click();
   await page.getByRole("button", { name: "Analyze metadata" }).click();
   await expect(
@@ -40,7 +40,7 @@ test("sample workflow through explicit review, approval, build, snapshots, and e
     }),
   ).toBeVisible();
   await page
-    .getByRole("link", { name: "05 Manual Ontology", exact: true })
+    .getByRole("link", { name: "Ontology Studio", exact: true })
     .click();
   await page.getByRole("button", { name: "Create draft" }).click();
   await expect(
@@ -48,11 +48,11 @@ test("sample workflow through explicit review, approval, build, snapshots, and e
   ).toBeEnabled();
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await page
-    .getByRole("link", { name: "06 Groq AI Suggestions", exact: true })
+    .getByRole("link", { name: "AI Suggestions", exact: true })
     .click();
   await page.getByRole("button", { name: "Skip AI suggestions" }).click();
   await page
-    .getByRole("link", { name: "07 Review & Approve", exact: true })
+    .getByRole("link", { name: "Review & Approval", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Apply review" }),
@@ -61,12 +61,12 @@ test("sample workflow through explicit review, approval, build, snapshots, and e
   await page.getByRole("button", { name: "Apply review" }).click();
   await expect(page.getByText("Review applied.")).toBeVisible();
   await page
-    .getByRole("link", { name: "08 Ontology Validation", exact: true })
+    .getByRole("link", { name: "Ontology Validation", exact: true })
     .click();
   await page.getByRole("button", { name: "Validate ontology" }).click();
   await expect(page.getByText("Validation passed.")).toBeVisible();
   await page
-    .getByRole("link", { name: "09 Ontology Versioning", exact: true })
+    .getByRole("link", { name: "Ontology Versioning", exact: true })
     .click();
   await page.getByLabel("Independent reviewer").fill("reviewer.lead");
   await page
@@ -74,27 +74,27 @@ test("sample workflow through explicit review, approval, build, snapshots, and e
     .click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await page.getByRole("link", { name: "10 Build Plan", exact: true }).click();
+  await page.getByRole("link", { name: "Build Plan", exact: true }).click();
   await page.getByRole("button", { name: "Run full build" }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Continue to snapshot storage" }),
   ).toBeVisible({ timeout: 60000 });
-  for (const [number, title] of [
-    [11, "Data Extraction"],
-    [12, "Data Quality"],
-    [13, "Clean & Entity Resolution"],
-    [14, "Build NetworkX Graph"],
-    [15, "Graph Validation"],
-  ] as const) {
+  for (const title of [
+    "Data Extraction",
+    "Data Quality",
+    "Cleaning & Entity Resolution",
+    "Graph Construction",
+    "Graph Validation",
+  ]) {
     await page
-      .getByRole("link", { name: `${number} ${title}`, exact: true })
+      .getByRole("link", { name: title, exact: true })
       .click();
     await expect(
       page.getByRole("heading", { name: "Stage results", exact: true }),
     ).toBeVisible();
   }
-  await page.getByRole("link", { name: "16 Store Graph", exact: true }).click();
+  await page.getByRole("link", { name: "Storage & Snapshots", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Save validated graph" }),
   ).toBeEnabled();

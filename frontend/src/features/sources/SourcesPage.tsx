@@ -147,7 +147,7 @@ export default function SourcesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="02 / DATA & METADATA"
+        eyebrow="Data & Metadata"
         title="Connect your data"
         description="Use the built-in retail sample, upload related files, or connect a read-only PostgreSQL source."
       />

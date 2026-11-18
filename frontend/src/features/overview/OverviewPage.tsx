@@ -9,6 +9,19 @@ import {
   Database,
   Shapes,
   GitBranch,
+  Compass,
+  ScanSearch,
+  ChartNoAxesCombined,
+  Sparkles,
+  ClipboardCheck,
+  BadgeCheck,
+  History,
+  ListChecks,
+  Rows3,
+  ShieldCheck,
+  Workflow,
+  HardDrive,
+  type LucideIcon,
 } from "lucide-react";
 import { sessionsApi } from "../../api/sessionsApi";
 import { useSessionStore } from "../../app/store";
@@ -19,7 +32,54 @@ import {
   Feedback,
   StatusChip,
 } from "../../shared/ui/WorkspaceUi";
-import { stageRoutes } from "../../constants/stages.constants";
+import { prerequisites, stageRoutes } from "../../constants/stages.constants";
+
+const stageIcons: Record<number, LucideIcon> = {
+  1: Compass,
+  2: Database,
+  3: ScanSearch,
+  4: ChartNoAxesCombined,
+  5: Shapes,
+  6: Sparkles,
+  7: ClipboardCheck,
+  8: BadgeCheck,
+  9: History,
+  10: ListChecks,
+  11: Rows3,
+  12: ShieldCheck,
+  13: Workflow,
+  14: Network,
+  15: BadgeCheck,
+  16: HardDrive,
+};
+
+const stageTitles: Record<number, string> = {
+  1: "Goal & Scope",
+  2: "Data Sources",
+  3: "Schema Extraction",
+  4: "Schema Analysis",
+  5: "Ontology Studio",
+  6: "AI Suggestions",
+  7: "Review & Approval",
+  8: "Ontology Validation",
+  9: "Ontology Versioning",
+  10: "Build Plan",
+  11: "Data Extraction",
+  12: "Data Quality",
+  13: "Cleaning & Entity Resolution",
+  14: "Graph Construction",
+  15: "Graph Validation",
+  16: "Storage & Snapshots",
+};
+
+const lifecycle = [
+  { title: "Data Sources", icon: Database },
+  { title: "Metadata", icon: ScanSearch },
+  { title: "Ontology", icon: Shapes },
+  { title: "Graph Construction", icon: Network },
+  { title: "Exploration", icon: Compass },
+];
+
 export default function OverviewPage() {
   const [name, setName] = useState("Knowledge workspace");
   const { id, session, done } = useWorkspace();
@@ -45,15 +105,26 @@ export default function OverviewPage() {
             {notice}
           </Alert>
         )}
-        <div className="intro-icon">
-          <Network size={31} />
+        <div className="creation-lifecycle" aria-label="Knowledge graph workflow">
+          {lifecycle.map(({ title, icon: Icon }, index) => (
+            <span className="lifecycle-step" key={title}>
+              <Icon size={15} />
+              <span>{title}</span>
+              {index < lifecycle.length - 1 && <span className="lifecycle-connector" aria-hidden="true" />}
+            </span>
+          ))}
         </div>
-        <PageHeader
-          eyebrow="ENTERPRISE KNOWLEDGE GRAPH"
-          title="Connect data. Build understanding."
-          description="Bring your sources, ontology, and graph together in one guided workspace. Start with the built-in retail sample or connect your own data."
-        />
-        <Panel title="Create your workspace">
+        <div className="creation-heading">
+          <div className="intro-icon">
+            <Network size={23} />
+          </div>
+          <PageHeader
+            eyebrow="KNOWLEDGE GRAPH WORKSPACE"
+            title="Create your knowledge workspace"
+            description="Connect data sources, define an ontology, and build a knowledge graph through a guided workflow."
+          />
+        </div>
+        <Panel title="Workspace details">
           <form
             className="form-stack"
             onSubmit={(e) => {
@@ -78,15 +149,12 @@ export default function OverviewPage() {
             </Button>
             <Feedback pending={create.isPending} error={create.error} />
             <p className="muted">
-              Sessions expire after inactivity. Keep this tab open while
-              working. A server restart ends active sessions.
+              Sessions expire after inactivity. Keep this browser session open;
+              restarting the backend ends active sessions.
             </p>
           </form>
         </Panel>
-        <div className="section-gap">
-          <Feedback error={health.error} />
-          {health.data && <StatusChip done>API connected</StatusChip>}
-        </div>
+        <Feedback error={health.error} />
       </div>
     );
   const next = stages.data?.find((s) => !done.includes(s.no));
@@ -106,18 +174,18 @@ export default function OverviewPage() {
           </Button>
         }
       />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         {[
           {
             title: "Workflow progress",
-            value: `${done.length} / 16`,
-            detail: "Stages completed",
+            value: `${done.length} / ${stages.data?.length ?? 16}`,
+            detail: "Workflow stages completed",
             icon: GitBranch,
           },
           {
             title: "Data sources",
             value: done.includes(2) ? "Connected" : "Not connected",
-            detail: "Session-specific connection",
+            detail: done.includes(2) ? "Source stage completed" : "Connect a source to continue",
             icon: Database,
           },
           {
@@ -127,7 +195,7 @@ export default function OverviewPage() {
               : done.includes(5)
                 ? "Draft"
                 : "Not started",
-            detail: "Review and approval required",
+            detail: done.includes(9) ? "Approved ontology available" : "Review and approval required",
             icon: Shapes,
           },
         ].map((m) => (
@@ -136,7 +204,7 @@ export default function OverviewPage() {
             key={m.title}
             action={<m.icon size={17} className="text-slate-400" />}
           >
-            <div className="metric">{m.value}</div>
+            <div className={`metric ${m.title === "Workflow progress" ? "metric-compact" : ""}`}>{m.value}</div>
             <p className="muted">{m.detail}</p>
           </Panel>
         ))}
@@ -144,36 +212,38 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-5">
         <Panel
           title="Your workflow"
-          action={<StatusChip>{session.data?.name}</StatusChip>}
+          action={<StatusChip>{session.data?.name ?? "Active workspace"}</StatusChip>}
         >
-          {stages.data?.map((s) => (
-            <Link className="stage-item" to={stageRoutes[s.no]} key={s.no}>
-              <span
-                className={`stage-icon ${done.includes(s.no) ? "done" : ""}`}
-              >
-                {done.includes(s.no) ? (
-                  <Check size={14} />
-                ) : (
-                  String(s.no).padStart(2, "0")
-                )}
-              </span>
-              <span className="stage-label">{s.title}</span>
-              <span className="muted">
-                {done.includes(s.no) ? "Complete" : "Open"}
-              </span>
-              <ArrowRight size={13} />
-            </Link>
-          ))}
+          <div className="workflow-list">
+            {stages.data?.map((s) => {
+              const Icon = stageIcons[s.no] ?? Workflow;
+              const complete = done.includes(s.no);
+              const blocked = !complete && !(prerequisites[s.no] ?? []).every((n) => done.includes(n));
+              const status = complete ? "Completed" : blocked ? "Blocked" : "Pending";
+              return (
+                <Link className="stage-item" to={stageRoutes[s.no]} key={s.no}>
+                  <span className={`stage-icon ${complete ? "done" : ""}`} aria-hidden="true">
+                    {complete ? <Check size={14} /> : <Icon size={14} />}
+                  </span>
+                  <span className="stage-label">{stageTitles[s.no] ?? s.title}</span>
+                  <span className={`status-pill ${complete ? "success" : blocked ? "blocked" : "pending"}`}>
+                    {status}
+                  </span>
+                  <ArrowRight size={13} aria-hidden="true" />
+                </Link>
+              );
+            })}
+          </div>
         </Panel>
         <div className="flex flex-col gap-5">
-          <Panel title="Start with sample data">
+          <Panel title="Start with sample data" action={<Database size={16} className="text-slate-400" />}>
             <p className="muted mb-4">
-              Define your scope, select the built-in retail source, and follow
-              each stage. AI suggestions can use the offline fixture or be
-              skipped. Review and approval remain explicit.
+              Start by defining your scope, then choose the built-in retail
+              sample or connect your own source. AI suggestions can be skipped;
+              ontology review and approval remain explicit.
             </p>
-            <Button component={Link} to="/scope" variant="outlined">
-              Open scope definition
+            <Button component={Link} to={next ? stageRoutes[next.no] : "/explorer"} variant="outlined" endIcon={<ArrowRight size={15} />}>
+              {next ? "Continue workflow" : "Explore graph"}
             </Button>
           </Panel>
           <Panel title="Workspace details">
@@ -182,14 +252,12 @@ export default function OverviewPage() {
               <code className="text-[10px] break-all">{id}</code>
             </div>
             <div className="report-row">
-              <span>Idle expiration</span>
-              <strong>
-                {session.data?.expires_in_seconds ?? 3600} seconds
-              </strong>
+              <span>Session expires in</span>
+              <strong>{session.data?.expires_in_seconds != null ? `${session.data.expires_in_seconds} seconds` : "Unavailable"}</strong>
             </div>
             <p className="muted mt-3">
-              This is a temporary workflow session. Saved artifacts are managed
-              by the backend.
+              This is a temporary workflow session. Saved graph artifacts are
+              managed by the backend.
             </p>
           </Panel>
         </div>

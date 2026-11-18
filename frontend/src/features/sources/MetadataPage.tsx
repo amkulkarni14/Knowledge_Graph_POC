@@ -52,7 +52,7 @@ export default function MetadataPage({
   return (
     <>
       <PageHeader
-        eyebrow={`${analysis ? "04" : "03"} / DATA & METADATA`}
+        eyebrow="Data & Metadata"
         title={analysis ? "Understand your schema" : "Explore source metadata"}
         description={
           analysis

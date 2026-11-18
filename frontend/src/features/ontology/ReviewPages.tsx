@@ -118,33 +118,29 @@ export default function ReviewPages({ mode }: { mode: string }) {
     ontologyApi.rollback(sid, ontologyId, version, actor),
   );
   const reuse = useAction((sid) => ontologyApi.useApproved(sid, ontologyId));
-  const titles: Record<string, [string, string, string]> = {
+  const titles: Record<string, [string, string]> = {
     suggestions: [
-      "06",
       "AI suggestions",
       "Generate suggestions for human review, or explicitly continue without AI.",
     ],
     review: [
-      "07",
       "Review the ontology",
       "Decide on suggestions, preview the result, and apply cycle and watermark rules.",
     ],
     validation: [
-      "08",
       "Validate the ontology",
       "Inspect structural and semantic findings. Blocking results prevent approval.",
     ],
     repository: [
-      "09",
       "Ontology repository",
       "Approve a reviewed ontology, inspect versions and audit history, or create a rollback draft.",
     ],
   };
-  const [number, title, description] = titles[mode];
+  const [title, description] = titles[mode];
   return (
     <>
       <PageHeader
-        eyebrow={`${number} / ONTOLOGY ENGINEERING`}
+        eyebrow="Ontology Engineering"
         title={title}
         description={description}
       />

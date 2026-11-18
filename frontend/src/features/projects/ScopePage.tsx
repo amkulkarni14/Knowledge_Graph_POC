@@ -133,7 +133,7 @@ export default function ScopePage() {
   return (
     <>
       <PageHeader
-        eyebrow="01 / DATA & METADATA"
+        eyebrow="Data & Metadata"
         title="Define your scope"
         description="Describe the questions your graph should answer and identify the data that belongs in this workspace."
       />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, TextField, MenuItem, Tabs, Tab, Alert } from "@mui/material";
 import { Maximize2 } from "lucide-react";
 import { graphsApi, ontologyApi, snapshotsApi } from "../../api/workflowApi";
@@ -28,7 +29,9 @@ export default function ExplorerPage() {
   const [limit, setLimit] = useState(150);
   const [offset, setOffset] = useState(0);
   const [fit, setFit] = useState(0);
-  const [tab, setTab] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get("view");
+  const tab = view === "path" ? 1 : view === "metrics" ? 2 : 0;
   const [edge, setEdge] = useState<JsonObject | null>(null);
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");
@@ -343,7 +346,13 @@ export default function ExplorerPage() {
         <Panel title="Graph analysis">
           <Tabs
             value={tab}
-            onChange={(_, v: number) => setTab(v)}
+            onChange={(_, v: number) => {
+              const next = new URLSearchParams(searchParams);
+              if (v === 1) next.set("view", "path");
+              else if (v === 2) next.set("view", "metrics");
+              else next.delete("view");
+              setSearchParams(next, { replace: true });
+            }}
             className="mb-5"
           >
             <Tab label="Entities" />

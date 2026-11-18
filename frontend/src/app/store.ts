@@ -14,13 +14,22 @@ export const useSessionStore = create<{
 export const useUiStore = create<{
   collapsed: boolean;
   activity: boolean;
+  collapsedGroups: string[];
   toggleSidebar: () => void;
   toggleActivity: () => void;
+  toggleGroup: (group: string) => void;
 }>((set) => ({
   collapsed: false,
   activity: false,
+  collapsedGroups: [],
   toggleSidebar: () => set((s) => ({ collapsed: !s.collapsed })),
   toggleActivity: () => set((s) => ({ activity: !s.activity })),
+  toggleGroup: (group) =>
+    set((s) => ({
+      collapsedGroups: s.collapsedGroups.includes(group)
+        ? s.collapsedGroups.filter((item) => item !== group)
+        : [...s.collapsedGroups, group],
+    })),
 }));
 export const useGraphStore = create<{
   selected: string | null;

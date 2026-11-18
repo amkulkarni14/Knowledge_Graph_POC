@@ -138,10 +138,10 @@ export default function OntologyPage() {
           ),
         },
         style: {
-          borderColor: "#b5cae2",
+          borderColor: "var(--border)",
           borderRadius: 7,
           width: 205,
-          background: "#fff",
+          background: "var(--color-white)",
           fontSize: 12,
         },
       })) ?? [],
@@ -180,7 +180,7 @@ export default function OntologyPage() {
   return (
     <>
       <PageHeader
-        eyebrow="05 / ONTOLOGY ENGINEERING"
+        eyebrow="Ontology Engineering"
         title="Ontology studio"
         description="Model classes, relationships, and source mappings. Editor changes invalidate downstream results; save your draft before review."
         action={

@@ -111,7 +111,7 @@ function BuildPage() {
   return (
     <>
       <PageHeader
-        eyebrow={`${stage} / GRAPH CONSTRUCTION`}
+        eyebrow="Graph Construction"
         title={titles[stage]}
         description="Execute a single stage or run the complete build from planning through validation. Snapshot storage is a separate operation."
         action={

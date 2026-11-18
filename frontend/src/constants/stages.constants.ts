@@ -36,12 +36,12 @@ export const stageRoutes: Record<number, string> = {
   16: "/storage",
 };
 export const graphColors = [
-  "#2c6bb5",
-  "#248578",
-  "#a76c27",
-  "#8963b7",
-  "#bb526b",
-  "#567781",
+  "#6d9693",
+  "#7892aa",
+  "#aa8d65",
+  "#8c879b",
+  "#ad7f83",
+  "#728f8e",
 ];
 export function colorForLabel(label: string) {
   return graphColors[

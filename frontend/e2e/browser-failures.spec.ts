@@ -7,12 +7,12 @@ test("scope form validation, route guard, and multiple CSV upload use the live b
     page.getByRole("button", { name: "Create workspace" }),
   ).toBeVisible();
   await page.getByRole('button',{name:'Toggle navigation'}).click();
-  await expect(page.getByRole('link',{name:'01 Goal & Scope',exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Goal & Scope',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Toggle navigation'}).click();
   await page.getByLabel("Workspace name").fill("CSV browser workflow");
   await page.getByRole("button", { name: "Create workspace" }).click();
   await page
-    .getByRole("link", { name: "01 Goal & Scope", exact: true })
+    .getByRole("link", { name: "Goal & Scope", exact: true })
     .click();
   await page.getByLabel("Project name").fill("CSV files");
   await page
@@ -21,7 +21,7 @@ test("scope form validation, route guard, and multiple CSV upload use the live b
   await page.getByRole("button", { name: "Save scope" }).click();
   await expect(page.getByText("Scope saved.")).toBeVisible();
   await page
-    .getByRole("link", { name: "02 Connect Safely", exact: true })
+    .getByRole("link", { name: "Data Sources", exact: true })
     .click();
   await page.getByRole("tab", { name: "Upload files" }).click();
   await page

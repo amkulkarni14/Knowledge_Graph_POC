@@ -9,8 +9,24 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Activity,
-  Check,
   RotateCcw,
+  Database,
+  ScanSearch,
+  ChartNoAxesCombined,
+  Shapes,
+  Sparkles,
+  ClipboardCheck,
+  BadgeCheck,
+  History,
+  ListChecks,
+  Rows3,
+  ShieldCheck,
+  Workflow,
+  HardDrive,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import { useSessionStore, useUiStore, useGraphStore } from "../store";
 import {
@@ -23,12 +39,61 @@ import { stageRoutes } from "../../constants/stages.constants";
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
 import { StageStepper } from "./StageStepper";
+
+const stageNavigation: Record<number, { title: string; icon: LucideIcon }> = {
+  1: { title: "Goal & Scope", icon: Compass },
+  2: { title: "Data Sources", icon: Database },
+  3: { title: "Schema Extraction", icon: ScanSearch },
+  4: { title: "Schema Analysis", icon: ChartNoAxesCombined },
+  5: { title: "Ontology Studio", icon: Shapes },
+  6: { title: "AI Suggestions", icon: Sparkles },
+  7: { title: "Review & Approval", icon: ClipboardCheck },
+  8: { title: "Ontology Validation", icon: BadgeCheck },
+  9: { title: "Ontology Versioning", icon: History },
+  10: { title: "Build Plan", icon: ListChecks },
+  11: { title: "Data Extraction", icon: Rows3 },
+  12: { title: "Data Quality", icon: ShieldCheck },
+  13: { title: "Cleaning & Entity Resolution", icon: Workflow },
+  14: { title: "Graph Construction", icon: Network },
+  15: { title: "Graph Validation", icon: BadgeCheck },
+  16: { title: "Storage & Snapshots", icon: HardDrive },
+};
+
+const stageGroups = [
+  { title: "Data & Metadata", numbers: [1, 2, 3, 4] },
+  { title: "Ontology Engineering", numbers: [5, 6, 7, 8, 9] },
+  { title: "Graph Construction", numbers: [10, 11, 12, 13, 14, 15, 16] },
+];
+
+function titleForRoute(pathname: string) {
+  if (pathname === "/") return "Overview";
+  if (pathname === "/explorer") return "Graph Explorer";
+  if (pathname.startsWith("/build")) {
+    const stage = Number(pathname.split("/")[2]) || 10;
+    return stageNavigation[stage]?.title ?? "Graph Construction";
+  }
+  const stage = Number(
+    Object.keys(stageRoutes).find((number) => stageRoutes[Number(number)] === pathname),
+  );
+  return stageNavigation[stage]?.title ?? pathname.slice(1).replaceAll("/", " / ");
+}
+
+function documentationUrl() {
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1";
+    return new URL("/docs", new URL(base, window.location.origin)).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const { collapsed, activity, toggleSidebar, toggleActivity } = useUiStore();
+  const { collapsed, activity, collapsedGroups, toggleSidebar, toggleActivity, toggleGroup } = useUiStore();
   const id = useSessionStore((s) => s.id);
   const session = useSession();
   const client = useQueryClient();
   const location = useLocation();
+  const graphView = new URLSearchParams(location.search).get("view");
   const [reset, setReset] = useState(false);
   useEffect(() => {
     if (
@@ -57,6 +122,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     (signal) => sessionsApi.events(id!, 0, signal),
     activity,
   );
+  const health = useQuery({
+    queryKey: ["health"],
+    queryFn: ({ signal }) => sessionsApi.health(signal),
+    staleTime: 15000,
+    retry: false,
+  });
   const remove = useAction((sid) => sessionsApi.remove(sid), {
     invalidate: false,
   });
@@ -68,6 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     useGraphStore.getState().reset();
     setReset(false);
   }
+  const docs = documentationUrl();
   return (
     <div className="shell">
       <a href="#main" className="skip-link">
@@ -77,65 +149,106 @@ export function AppShell({ children }: { children: ReactNode }) {
         className={`sidebar ${collapsed ? "collapsed" : ""}`}
         aria-label="Main navigation"
       >
-        <div className="brand">
+        <div className="brand" title="Knowledge Graph Enterprise Studio">
           <Network size={27} />
           {!collapsed && (
             <span className="brand-name">
               Knowledge Graph
-              <span className="block text-[10px] font-normal tracking-widest text-slate-400 mt-1">
+              <span className="block text-[10px] font-normal tracking-widest mt-1">
                 ENTERPRISE STUDIO
               </span>
             </span>
           )}
         </div>
-        <NavLink to="/" className="nav-link" title="Overview">
-          <LayoutDashboard size={17} />
-          {!collapsed && <span className="nav-text">Overview</span>}
-        </NavLink>
-        {["A", "B", "C"].map((part, index) => (
-          <div key={part}>
-            {!collapsed && (
-              <div className="nav-group">
-                {
-                  [
-                    "Data & metadata",
-                    "Ontology engineering",
-                    "Graph construction",
-                  ][index]
-                }
-              </div>
-            )}
-            {stages.data
-              ?.filter((s) => (s.no === 10 ? "C" : s.part) === part)
-              .map((s) => (
-                <NavLink
-                  to={stageRoutes[s.no]}
-                  key={s.no}
-                  className="nav-link"
-                  title={s.title}
-                  aria-label={`${String(s.no).padStart(2, "0")} ${s.title}`}
+        <nav className="sidebar-nav">
+          {!collapsed && <div className="nav-group">Workspace</div>}
+          <NavLink to="/" end className="nav-link" title="Overview">
+            <LayoutDashboard size={16} />
+            {!collapsed && <span className="nav-text">Overview</span>}
+          </NavLink>
+          {stageGroups.map((group) => (
+            <div key={group.title}>
+              {!collapsed && (
+                <button
+                  className="nav-group nav-group-toggle"
+                  aria-expanded={!collapsedGroups.includes(group.title)}
+                  onClick={() => toggleGroup(group.title)}
                 >
-                  <span className="nav-number">
-                    {String(s.no).padStart(2, "0")}
-                  </span>
-                  {!collapsed && (
-                    <>
-                      <span className="nav-text">{s.title}</span>
-                      {session.data?.completed_stages.includes(s.no) && (
-                        <Check className="nav-check" size={13} />
+                  {collapsedGroups.includes(group.title) ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                  {group.title}
+                </button>
+              )}
+              {(!collapsed && collapsedGroups.includes(group.title) ? [] : stages.data ?? [])
+                ?.filter((stage) => group.numbers.includes(stage.no))
+                .map((stage) => {
+                  const item = stageNavigation[stage.no];
+                  if (!item) return null;
+                  const Icon = item.icon;
+                  const complete = session.data?.completed_stages.includes(stage.no) ?? false;
+                  return (
+                    <NavLink
+                      to={stageRoutes[stage.no]}
+                      key={stage.no}
+                      className="nav-link"
+                      title={item.title}
+                      aria-label={item.title}
+                    >
+                      <Icon className="nav-icon" size={15} />
+                      {!collapsed && (
+                        <>
+                          <span className="nav-text">{item.title}</span>
+                          {complete && <BadgeCheck className="nav-status" size={14} aria-label="Completed" />}
+                        </>
                       )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+                    </NavLink>
+                  );
+                })}
+            </div>
+          ))}
+          {!collapsed && (
+            <button
+              className="nav-group nav-group-toggle"
+              aria-expanded={!collapsedGroups.includes("Graph Intelligence")}
+              onClick={() => toggleGroup("Graph Intelligence")}
+            >
+              {collapsedGroups.includes("Graph Intelligence") ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+              Graph Intelligence
+            </button>
+          )}
+          {(collapsed || !collapsedGroups.includes("Graph Intelligence")) && (
+            <>
+              <NavLink to="/explorer" end className={({ isActive }) => `nav-link ${isActive && graphView !== "path" && graphView !== "metrics" ? "active" : ""}`} title="Graph Explorer" aria-label="Graph Explorer">
+                <Compass size={16} />
+                {!collapsed && <span className="nav-text">Graph Explorer</span>}
+              </NavLink>
+              <NavLink to="/explorer?view=path" className={({ isActive }) => `nav-link nav-sub-link ${isActive && graphView === "path" ? "active" : ""}`} title="Path Analysis" aria-label="Path Analysis">
+                <Workflow size={15} />
+                {!collapsed && <span className="nav-text">Path Analysis</span>}
+              </NavLink>
+              <NavLink to="/explorer?view=metrics" className={({ isActive }) => `nav-link nav-sub-link ${isActive && graphView === "metrics" ? "active" : ""}`} title="Graph Metrics" aria-label="Graph Metrics">
+                <ChartNoAxesCombined size={15} />
+                {!collapsed && <span className="nav-text">Graph Metrics</span>}
+              </NavLink>
+            </>
+          )}
+        </nav>
+        {stages.error && <Feedback error={stages.error} />}
+        <div className="sidebar-footer">
+          <div className="connection-row" title={health.isError ? "API disconnected" : health.data ? "API connected" : "Checking API connection"}>
+            <span className={`connection-dot ${health.isError ? "disconnected" : health.data ? "connected" : ""}`} />
+            {!collapsed && <span className="footer-label">{health.isError ? "API disconnected" : health.data ? "API connected" : "Connecting to API…"}</span>}
           </div>
-        ))}
-        {!collapsed && <div className="nav-group">Explore</div>}
-        <NavLink to="/explorer" className="nav-link" title="Graph explorer">
-          <Compass size={17} />
-          {!collapsed && <span className="nav-text">Graph Explorer</span>}
-        </NavLink>
-        <Feedback error={stages.error} />
+          {docs && (
+            <a className="nav-link" href={docs} target="_blank" rel="noreferrer" title="API documentation" aria-label="API documentation">
+              <BookOpen size={15} />
+              {!collapsed && <span className="nav-text">API documentation</span>}
+            </a>
+          )}
+          <button className="nav-link sidebar-collapse" onClick={toggleSidebar} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+            {!collapsed && <span className="nav-text">Collapse sidebar</span>}
+          </button>
+        </div>
       </aside>
       <div className={`shell-main ${collapsed ? "wide" : ""}`}>
         <header className="topbar">
@@ -151,17 +264,20 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <PanelLeftClose size={18} />
               )}
             </button>
-            <span className="breadcrumb">
-              Workspace /{" "}
-              {location.pathname === "/"
-                ? "Overview"
-                : location.pathname.slice(1).replaceAll("/", " / ")}
-            </span>
+            <div className="topbar-context" aria-label="Breadcrumb">
+              <span className="breadcrumb-muted">Workspace</span>
+              <span aria-hidden="true">/</span>
+              <strong>{titleForRoute(location.pathname)}</strong>
+            </div>
           </div>
           <div className="topbar-right">
-            <span className="workspace-badge">
-              {session.data?.name ?? "No active workspace"}
+            {id && <span className="workspace-badge" title={session.data?.name}>{session.data?.name ?? "Loading workspace…"}</span>}
+            <span className="topbar-divider" />
+            <span className="connection-row" aria-label={health.data ? "API connected" : health.isError ? "API disconnected" : "Checking API connection"}>
+              <span className={`connection-dot ${health.isError ? "disconnected" : health.data ? "connected" : ""}`} />
+              <span className="footer-label">{health.isError ? "API offline" : health.data ? "API connected" : "Connecting"}</span>
             </span>
+            {docs && <a className="icon-button" href={docs} target="_blank" rel="noreferrer" aria-label="API documentation" title="API documentation"><BookOpen size={16} /></a>}
             <button
               className="icon-button"
               aria-label="Toggle activity log"
