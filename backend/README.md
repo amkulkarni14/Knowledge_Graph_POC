@@ -1,6 +1,6 @@
 # Knowledge Graph backend
 
-FastAPI adapters for the existing 16-stage pipeline. Legacy Streamlit code and processing algorithms are unchanged.
+FastAPI adapters for the 16-stage pipeline. See the [Docker guide](../docker/README.md) to run the backend alongside the React frontend and local databases.
 
 ## Install and run
 

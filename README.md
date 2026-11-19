@@ -8,145 +8,60 @@ its output and what actually happened.
 
 ## Run
 
+### First-time local setup with Docker
+
+1. Clone the repository and open its root folder in a terminal.
+2. Start Docker Desktop in Linux container mode, or use Docker Engine with the Compose plugin. Check that `docker info` shows a Server section.
+3. From the repository root, run these PowerShell commands to build the app images and start the frontend, backend, PostgreSQL, and Neo4j.
+
+   ```powershell
+   cd docker
+   if (!(Test-Path .env)) { Copy-Item .env.example .env }
+   docker compose --profile postgres --profile neo4j up -d --build --wait
+   ```
+
+4. Open **http://127.0.0.1:8080** and sign in with **`admin` / `admin`** for local use. If port `8080` is unavailable, set `KG_WEB_PORT=18080` in `docker/.env`, rerun the Compose command, and open **http://127.0.0.1:18080**.
+
+Docker starts the frontend and API for you. Each teammate can run their own copy with their own local database volumes. For PostgreSQL and Neo4j connection settings, see the [Docker setup guide](docker/README.md).
+
+### Rebuild after code changes
+
+Saving a source file does not update a running container. Pull the latest code or finish your local edits, then run the matching commands from the `docker/` folder.
+
+| What changed | Commands |
+|---|---|
+| React frontend | `docker compose build frontend` then `docker compose up -d --no-deps frontend` |
+| FastAPI backend or Python pipeline | `docker compose build backend` then `docker compose up -d --no-deps backend --wait` |
+| Both app images | `docker compose --profile postgres --profile neo4j up -d --build --wait` |
+| Runtime settings in `docker/.env` | `docker compose --profile postgres --profile neo4j up -d --wait` |
+
+Refresh the browser after the container starts. Rebuilds preserve named volumes and saved artifacts. Recreating the backend clears active app sessions because those sessions live in memory.
+
+For development outside Docker, see the [frontend](frontend/README.md) and [backend](backend/README.md) instructions.
+
+### Run the pipeline from Python
+
+Run the pipeline directly from the repository root with the Python requirements installed.
+
 ```powershell
-python -m venv .venv ; .venv\Scripts\activate
-pip install -r requirements.txt
-
-# UI (run from the project root so .streamlit/config.toml is picked up)
-streamlit run legacy/streamlit/app.py
-
-# Headless, same code as the UI
-python scripts/run_pipeline.py              # built-in sample data + offline AI response
-python scripts/run_pipeline.py --postgres   # PG* variables from .env (read-only user)
-python scripts/run_pipeline.py --use-groq   # live Groq call (GROQ_API_KEY)
-python scripts/run_pipeline.py --csv-dir data/samples/customer360   # every .csv in a folder, ontology drafted by rules
-
-# Tests (200): CSV source, ontology drafting, all 16 stages on files, the Streamlit screens, the CLI
-pip install -r requirements-dev.txt
-python -m pytest data_pipeline/tests
+python -m pip install -r requirements.txt
+python scripts/run_pipeline.py
+python scripts/run_pipeline.py --postgres
+python scripts/run_pipeline.py --use-groq
+python scripts/run_pipeline.py --csv-dir data/samples/customer360
 ```
-
-To try a real database: `psql -d retail -f database/postgres/init/01_source_schema.sql`, copy `.env.example` to
-`.env`, fill the `PG*` values, then choose **PostgreSQL** in Stage 2.
-
-To try files: Stage 2 → **Upload CSV files** → select several files at once (or use the bundled Customer 360
-examples), then Stage 5 → **🪄 Draft from the schema**. See [Uploading CSV files](#uploading-csv-files-stage-2).
 
 ## Folder structure
 
-```
-Knowledge_Graph/
-├── .env.example
-├── .gitignore
-├── .streamlit/
-│   └── config.toml
-├── README.md
-├── data/
-│   ├── fixtures/
-│   │   └── groq_offline_fixture.json
-│   ├── ontologies/
-│   │   └── retail_manual_draft.json
-│   └── samples/
-│       ├── README.md
-│       ├── customer360/
-│       │   ├── accounts.csv
-│       │   ├── banks.csv
-│       │   ├── credit_enquiry.csv
-│       │   ├── credit_score.csv
-│       │   ├── customers.csv
-│       │   ├── loans.csv
-│       │   └── payments.csv
-│       └── customer360_messy/
-│           ├── customers.csv
-│           └── loans.csv
-├── data_pipeline/
-│   ├── src/
-│   │   └── kg_pipeline/
-│   │       ├── __init__.py
-│   │       ├── config.py
-│   │       ├── core/
-│   │       │   ├── __init__.py
-│   │       │   ├── context.py
-│   │       │   ├── naming.py
-│   │       │   ├── ontology_models.py
-│   │       │   ├── s01_scope.py
-│   │       │   └── schema_models.py
-│   │       ├── graph_builder/
-│   │       │   ├── __init__.py
-│   │       │   ├── loaders/
-│   │       │   │   └── s16_graph_persistence.py
-│   │       │   ├── s10_build_plan.py
-│   │       │   ├── s14_graph_builder.py
-│   │       │   └── s15_graph_validation.py
-│   │       ├── metadata_extractor/
-│   │       │   ├── s03_schema_extraction.py
-│   │       │   └── s04_schema_analysis.py
-│   │       ├── ontology_compiler/
-│   │       │   ├── ontology_draft.py
-│   │       │   ├── s05_manual_ontology.py
-│   │       │   ├── s06_ai_suggestions.py
-│   │       │   ├── s07_review_approval.py
-│   │       │   ├── s08_ontology_validation.py
-│   │       │   └── s09_ontology_repository.py
-│   │       ├── pipeline.py
-│   │       └── preprocessing/
-│   │           ├── connectors/
-│   │           │   ├── __init__.py
-│   │           │   ├── base.py
-│   │           │   ├── csv_source.py
-│   │           │   ├── postgres_source.py
-│   │           │   ├── sample_data.py
-│   │           │   └── sample_source.py
-│   │           ├── s02_connect.py
-│   │           ├── s11_extraction.py
-│   │           ├── s12_data_quality.py
-│   │           ├── s13_cleaning_er.py
-│   │           └── transform.py
-│   └── tests/
-│       ├── conftest.py
-│       ├── test_csv_source.py
-│       ├── test_naming.py
-│       ├── test_ontology_draft.py
-│       ├── test_pipeline_csv.py
-│       └── test_ui.py
-├── database/
-│   └── postgres/
-│       └── init/
-│           ├── 01_source_schema.sql
-│           └── 02_kg_meta_schema.sql
-├── legacy/
-│   └── streamlit/
-│       ├── app.py
-│       ├── components/
-│       │   ├── __init__.py
-│       │   ├── bootstrap.py
-│       │   ├── graph_view.py
-│       │   ├── layout.py
-│       │   └── viz.py
-│       └── pages/
-│           ├── explorer.py
-│           ├── home.py
-│           ├── s01_scope.py
-│           ├── s02_connect.py
-│           ├── s03_schema.py
-│           ├── s04_analysis.py
-│           ├── s05_manual.py
-│           ├── s06_ai.py
-│           ├── s07_review.py
-│           ├── s08_validate.py
-│           ├── s09_repo.py
-│           ├── s10_plan.py
-│           ├── s11_extract.py
-│           ├── s12_quality.py
-│           ├── s13_clean.py
-│           ├── s14_build.py
-│           ├── s15_gvalidate.py
-│           └── s16_store.py
-├── requirements-dev.txt
-├── requirements.txt
-└── scripts/
-    └── run_pipeline.py
-```
+| Directory | Contents |
+|---|---|
+| `docker/` | Compose, Dockerfiles, and connection instructions |
+| `frontend/` | React UI and browser tests |
+| `backend/` | FastAPI API and tests |
+| `data_pipeline/` | Pipeline implementation and tests |
+| `data/` | Samples, fixtures, and ontology definitions |
+| `database/postgres/` | PostgreSQL initialization SQL |
+| `scripts/` | Command-line pipeline entry point |
 
 ## The stages
 

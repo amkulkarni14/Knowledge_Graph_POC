@@ -1,6 +1,6 @@
 # Knowledge Graph React workspace
 
-React and strict TypeScript frontend for the existing FastAPI application. All 16 workflow stages use backend session state. No backend, pipeline, ontology definition, dataset, or Streamlit changes are required.
+React and strict TypeScript frontend for the FastAPI application. All 16 workflow stages use backend session state. See the [Docker guide](../docker/README.md) to run the full stack.
 
 ## Run locally
 

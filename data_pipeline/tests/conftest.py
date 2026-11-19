@@ -1,4 +1,4 @@
-"""Shared test setup: make pipeline and legacy UI importable and keep every test's output out of the real storage/ folder."""
+"""Make the pipeline importable and keep test output out of the real storage folder."""
 from __future__ import annotations
 
 import sys
@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-for p in (ROOT / "data_pipeline" / "src", ROOT / "legacy" / "streamlit"):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+PIPELINE_SRC = str(ROOT / "data_pipeline" / "src")
+if PIPELINE_SRC not in sys.path:
+    sys.path.insert(0, PIPELINE_SRC)
 
 from kg_pipeline.config import SAMPLE_FILES_DIR
 from kg_pipeline.config import settings  # noqa: E402

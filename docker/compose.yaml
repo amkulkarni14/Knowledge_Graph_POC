@@ -1,0 +1,75 @@
+name: knowledge-graph
+
+services:
+  frontend:
+    image: kg-studio-frontend:local
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "127.0.0.1:${KG_WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    image: kg-studio-backend:local
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      KG_STORAGE_DIR: /app/storage
+      KG_API_STORAGE_DIR: /app/storage/api_sessions
+      AUTH_DEFAULT_USERNAME: ${AUTH_DEFAULT_USERNAME:-admin}
+      AUTH_DEFAULT_PASSWORD_HASH: ${AUTH_DEFAULT_PASSWORD_HASH:?Set AUTH_DEFAULT_PASSWORD_HASH in docker/.env}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in docker/.env}
+      PGHOST: ${PGHOST:-postgres}
+      PGPORT: ${PGPORT:-5432}
+      PGDATABASE: ${PGDATABASE:-retail}
+      PGUSER: ${PGUSER:-kg_reader}
+      PGPASSWORD: ${PGPASSWORD:-}
+      PGSSLMODE: ${PGSSLMODE:-prefer}
+      PG_SCHEMAS: ${PG_SCHEMAS:-public}
+      NEO4J_URI: ${NEO4J_URI:-}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    volumes:
+      - backend-data:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    image: postgres:16
+    profiles: [postgres]
+    environment:
+      POSTGRES_DB: retail
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_ADMIN_PASSWORD:-}
+      LOCAL_POSTGRES_READER_PASSWORD: ${LOCAL_POSTGRES_READER_PASSWORD:-}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../database/postgres/init/01_source_schema.sql:/docker-entrypoint-initdb.d/01_source_schema.sql:ro
+      - ../database/postgres/init/02_kg_meta_schema.sql:/docker-entrypoint-initdb.d/02_kg_meta_schema.sql:ro
+      - ./postgres-reader.sql:/docker-entrypoint-initdb.d/03_reader.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "retail"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  neo4j:
+    image: neo4j:5.26
+    profiles: [neo4j]
+    environment:
+      NEO4J_AUTH: neo4j/${LOCAL_NEO4J_PASSWORD:-}
+    volumes:
+      - neo4j-data:/data
+
+volumes:
+  backend-data:
+  postgres-data:
+  neo4j-data:
