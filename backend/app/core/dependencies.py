@@ -8,13 +8,6 @@ from backend.app.exceptions.handlers import ApiError
 from backend.app.repositories.sessions import Session
 
 
-def get_session(session_id: UUID, request: Request) -> Session:
-    return request.app.state.sessions.get(session_id)
-
-
-CurrentSession = Annotated[Session, Depends(get_session)]
-
-
 @dataclass(frozen=True)
 class AuthUser:
     username: str
@@ -44,3 +37,10 @@ def get_current_user(request: Request) -> AuthUser:
 
 
 CurrentUser = Annotated[AuthUser, Depends(get_current_user)]
+
+
+def get_session(session_id: UUID, request: Request, user: CurrentUser) -> Session:
+    return request.app.state.sessions.get(session_id, user.username)
+
+
+CurrentSession = Annotated[Session, Depends(get_session)]

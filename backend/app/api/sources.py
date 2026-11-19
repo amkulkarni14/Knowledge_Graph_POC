@@ -59,3 +59,16 @@ async def upload(request: Request, session: CurrentSession):
 def status(session: CurrentSession):
     with operation(session):
         return {"data": session.ctx.source_info}
+
+
+@router.get("/health", response_model=Result[dict])
+def health(session: CurrentSession):
+    source = session.ctx.source
+    if source is None:
+        return {"data": {"status": "unconfigured"}}
+    try:
+        source.ping()
+        status = "available"
+    except Exception:
+        status = "unavailable"
+    return {"data": {"status": status, "mode": session.ctx.source_info.get("mode")}}

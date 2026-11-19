@@ -1,5 +1,6 @@
 import { useSessionStore } from "../../app/store";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Button,
   TextField,
@@ -70,7 +71,8 @@ export default function StoragePage() {
       <PageHeader
         eyebrow="Graph Construction"
         title="Storage & snapshots"
-        description="Persist your validated graph, inspect snapshot history, and download artifacts. Optional Neo4j loading uses server-managed credentials."
+        description="Save a local snapshot or publish a validated version to the persistent graph workspace."
+        action={<Button component={Link} to="/published-graphs">Graph Versions</Button>}
       />
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.5fr] gap-5">
         <Panel title="Save a snapshot">
@@ -86,14 +88,14 @@ export default function StoragePage() {
                   onChange={(e) => setNeo(e.target.checked)}
                 />
               }
-              label="Also load into configured Neo4j"
+              label="Publish to Neo4j"
             />
             <Button
               variant="contained"
               disabled={!can(16) || save.isPending}
               onClick={() => setConfirm("save")}
             >
-              Save validated graph
+              {neo ? "Queue publication" : "Save validated graph"}
             </Button>
             {!can(16) && (
               <Alert severity="info">
@@ -102,6 +104,7 @@ export default function StoragePage() {
             )}
             <Feedback pending={save.isPending} error={save.error} />
             <Report value={save.data?.result} />
+            {neo && save.data && <Button component={Link} to="/published-graphs?view=operations">View publication progress</Button>}
           </div>
         </Panel>
         <Panel title="Snapshot history">
@@ -182,7 +185,7 @@ export default function StoragePage() {
         open={!!confirm}
         title={
           confirm === "save"
-            ? "Save graph snapshot?"
+            ? neo ? "Publish graph to Neo4j?" : "Save graph snapshot?"
             : "Promote snapshot to CURRENT?"
         }
         pending={save.isPending || promote.isPending}
@@ -194,7 +197,7 @@ export default function StoragePage() {
       >
         <p>
           {confirm === "save"
-            ? `Save the validated graph${neo ? " and write it to the server-configured Neo4j database" : ""}.`
+            ? neo ? "Stage and verify the validated graph before publication." : "Save the validated graph as a local snapshot."
             : `Use ${build} as the CURRENT snapshot for ${ontologyId}.`}
         </p>
         <Feedback error={save.error || promote.error} />

@@ -56,7 +56,7 @@ function BuildPage() {
     queryKey: ["workspace", id, "build", "status"],
     queryFn: ({ signal }) => buildsApi.status(id, signal),
     refetchInterval: (q) =>
-      q.state.data && ["queued", "running"].includes(q.state.data.status)
+      q.state.data && ["queued", "running", "cancelling", "publishing"].includes(q.state.data.status)
         ? 1500
         : false,
     retry: false,
@@ -64,11 +64,11 @@ function BuildPage() {
   const client = useQueryClient();
   const jobStatus = status.data?.status;
   useEffect(() => {
-    if (jobStatus && ["completed", "blocked", "failed"].includes(jobStatus))
+    if (jobStatus && ["completed", "blocked", "failed", "cancelled"].includes(jobStatus))
       void client.invalidateQueries({ queryKey: ["workspace", id, "session"] });
   }, [jobStatus, id, client]);
   const busy =
-    status.data?.status === "running" || status.data?.status === "queued";
+    ["queued", "running", "cancelling", "publishing"].includes(status.data?.status ?? "");
   const config = {
     batch_size: batch,
     business_rules: Object.keys(rules ?? {}).length ? rules : undefined,

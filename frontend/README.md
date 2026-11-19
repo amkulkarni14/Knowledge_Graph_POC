@@ -10,17 +10,16 @@ From `Knowledge_Graph`, start the existing backend in a terminal:
 .\.venv\Scripts\python.exe -B -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-In another terminal:
+In another PowerShell terminal, from the repository root:
 
 ```powershell
-cd frontend
-npm ci
-npm run dev
+.\frontend\npm22.cmd ci
+.\frontend\npm22.cmd run dev
 ```
 
 Open **http://127.0.0.1:5173**. The default API URL is `http://127.0.0.1:8000/api/v1`. To change it, copy `.env.example` to `.env` and set `VITE_API_BASE_URL`. Only public configuration belongs in Vite environment variables.
 
-Node must satisfy Vite's engine requirement (`20.19+` or `22.12+`); this workspace was checked using Node 26.13.0. Dependencies are locked in `package-lock.json`.
+On Windows, `npm22.cmd` uses Node `22.23.5` from NVM for Windows for that command and its child processes only. If needed, run `nvm install 22.23.5` once. No `nvm use` is needed; your default Node version can stay on 14. The wrapper runs npm in `frontend`. For the npm checks below, run `cd frontend` first and replace `npm` with `.\npm22.cmd` if your default Node is 14. Dependencies are locked in `package-lock.json`.
 
 ## Guided sample workflow
 

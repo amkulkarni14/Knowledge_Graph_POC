@@ -1,11 +1,9 @@
-import os
 from typing import Literal
-from fastapi import APIRouter, Query
-from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import FileResponse
 import networkx as nx
 from kg_pipeline.graph_builder.loaders import s16_graph_persistence as persistence
-from backend.app.core.dependencies import CurrentSession
+from backend.app.core.dependencies import CurrentSession, CurrentUser
 from backend.app.dto.models import Result, GraphView, Page, SnapshotRequest, Identifier, BuildId
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services import graphs as service
@@ -14,19 +12,19 @@ from backend.app.services.workflow import execute, operation, require
 router = APIRouter(prefix="/sessions/{session_id}/graphs", tags=["graphs"])
 
 
-@router.post("/snapshots", response_model=Result[dict])
-def save_snapshot(body: SnapshotRequest, session: CurrentSession):
+@router.post("/snapshots", response_model=Result[dict],
+             responses={202: {"model": Result[dict], "description": "Neo4j publication queued"}})
+def save_snapshot(body: SnapshotRequest, session: CurrentSession, user: CurrentUser,
+                  request: Request, response: Response):
+    if body.load_neo4j:
+        job = request.app.state.builds.start_publication(session, user.username)
+        response.status_code = 202
+        return {"data": job}
     with operation(session):
         require(session, 14)
         if session.ctx.graph_report is None:
             raise ApiError(409, "no_graph_validation", "Validate the graph before saving")
-        neo = None
-        if body.load_neo4j:
-            uri, user, password = (os.environ.get(k) for k in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"))
-            if not all((uri, user, password)):
-                raise ApiError(409, "neo4j_not_configured", "Neo4j is not configured on the server")
-            neo = {"uri": uri, "user": user, "password": password}
-        result = execute(session, 16, persistence.run, neo4j=neo)
+        result = execute(session, 16, persistence.run)
         return {"data": {k: v for k, v in result.items() if k != "path"}}
 
 

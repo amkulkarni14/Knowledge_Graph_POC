@@ -15,6 +15,7 @@ class Session:
     id: UUID
     name: str
     root: Path
+    owner: str | None = None
     ctx: PipelineContext = field(default_factory=PipelineContext)
     editor: Any = None
     saved_draft: Any = None
@@ -63,21 +64,21 @@ class SessionRepository:
                         finally:
                             session.lock.release()
 
-    def create(self, name: str):
+    def create(self, name: str, owner: str | None = None):
         with self._lock:
             self.cleanup()
             if len(self._sessions) >= self.settings.max_sessions:
                 raise ApiError(503, "session_capacity", "Session capacity reached")
             sid = uuid4()
-            session = Session(sid, name, self.settings.storage_root / str(sid))
+            session = Session(sid, name, self.settings.storage_root / str(sid), owner=owner)
             self._sessions[sid] = session
             return session
 
-    def get(self, sid: UUID):
+    def get(self, sid: UUID, owner: str | None = None):
         with self._lock:
             self.cleanup()
             session = self._sessions.get(sid)
-            if session is None or session.closed:
+            if session is None or session.closed or (owner is not None and session.owner != owner):
                 raise ApiError(404, "session_not_found", "Session does not exist or has expired")
             session.touched = monotonic()
             return session

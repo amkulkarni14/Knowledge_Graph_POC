@@ -17,9 +17,11 @@ export interface Stage {
 }
 export interface Job {
   id: string;
-  status: "queued" | "running" | "completed" | "blocked" | "failed";
+  status: "queued" | "running" | "cancelling" | "publishing" | "completed" | "blocked" | "failed" | "cancelled";
   stage: number | null;
   progress: JsonObject | null;
   error: { code: string; message: string } | null;
+  started_at?: string;
+  finished_at?: string;
 }
 export type GraphSelection = { ontology_id?: string; build_id?: string };

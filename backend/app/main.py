@@ -12,8 +12,9 @@ from backend.app.core.security import RevokedTokens
 from backend.app.exceptions.handlers import (
     ApiError, api_error_handler, validation_handler, http_handler, unexpected_handler)
 from backend.app.repositories.sessions import SessionRepository
+from backend.app.repositories.graph_versions import recover_interrupted
 from backend.app.services.builds import BuildRunner
-from backend.app.api import auth, sessions, sources, metadata, ontology, builds, graphs
+from backend.app.api import auth, sessions, sources, metadata, ontology, builds, graphs, graph_versions
 
 
 def create_app(config: ApiSettings | None = None):
@@ -23,6 +24,7 @@ def create_app(config: ApiSettings | None = None):
     async def lifespan(app):
         async def reap():
             while True:
+                await asyncio.to_thread(recover_interrupted)
                 await asyncio.sleep(min(60, config.session_ttl_seconds))
                 await asyncio.to_thread(app.state.sessions.cleanup)
         task = asyncio.create_task(reap())
@@ -59,7 +61,8 @@ def create_app(config: ApiSettings | None = None):
 
     # /login is the only public route besides /health; everything else requires a valid token.
     app.include_router(auth.router, prefix="/api/v1")
-    for router in (sessions.router, sources.router, metadata.router, ontology.router, builds.router, graphs.router):
+    for router in (sessions.router, sources.router, metadata.router, ontology.router, builds.router,
+                   graphs.router, graph_versions.router):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
     return app
 

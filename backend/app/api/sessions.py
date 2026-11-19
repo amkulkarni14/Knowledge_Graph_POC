@@ -1,8 +1,7 @@
-from uuid import UUID
 from fastapi import APIRouter, Request, Response, Query
 from kg_pipeline.core.context import STAGES
 from kg_pipeline.core.s01_scope import run as scope_run
-from backend.app.core.dependencies import CurrentSession
+from backend.app.core.dependencies import CurrentSession, CurrentUser
 from backend.app.dto.models import Result, SessionCreate, SessionView, ScopeRequest, Page
 from backend.app.services.workflow import execute, operation
 
@@ -15,8 +14,8 @@ def stages():
 
 
 @router.post("/sessions", status_code=201, response_model=Result[SessionView])
-def create(body: SessionCreate, request: Request):
-    session = request.app.state.sessions.create(body.name)
+def create(body: SessionCreate, request: Request, user: CurrentUser):
+    session = request.app.state.sessions.create(body.name, owner=user.username)
     return {"data": session.view(request.app.state.config.session_ttl_seconds)}
 
 
@@ -26,8 +25,8 @@ def read(session: CurrentSession, request: Request):
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
-def close(session_id: UUID, request: Request):
-    request.app.state.sessions.delete(session_id)
+def close(session: CurrentSession, request: Request):
+    request.app.state.sessions.delete(session.id)
     return Response(status_code=204)
 
 

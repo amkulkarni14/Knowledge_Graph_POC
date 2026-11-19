@@ -64,7 +64,7 @@ class PostgresSource:
 
         self._psycopg = psycopg
         self.schemas = schemas or ["public"]
-        self.name = f"postgresql://{user}@{host}:{port}/{dbname}"
+        self.name = "PostgreSQL source"
         conninfo = psycopg.conninfo.make_conninfo(
             host=host, port=str(port), dbname=dbname, user=user, password=password, sslmode=sslmode,
             application_name="kg-networkx-builder", connect_timeout="10",
@@ -76,9 +76,9 @@ class PostgresSource:
     # ------------------------------------------------------------ health
     def ping(self) -> dict:
         with self.pool.connection() as conn, conn.cursor() as cur:
-            cur.execute("SELECT version(), current_user, current_setting('default_transaction_read_only')")
-            version, user, ro = cur.fetchone()
-        return {"server_version": version.split(",")[0], "user": user, "read_only": ro == "on"}
+            cur.execute("SELECT version(), current_setting('default_transaction_read_only')")
+            version, ro = cur.fetchone()
+        return {"server_version": version.split(",")[0], "read_only": ro == "on"}
 
     # ------------------------------------------------------------ schema
     def introspect_schema(self) -> SchemaCatalog:

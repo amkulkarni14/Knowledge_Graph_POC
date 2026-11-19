@@ -33,6 +33,12 @@ services:
       NEO4J_URI: ${NEO4J_URI:-}
       NEO4J_USER: ${NEO4J_USER:-neo4j}
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-}
+      NEO4J_READ_USER: ${NEO4J_READ_USER:-}
+      NEO4J_READ_PASSWORD: ${NEO4J_READ_PASSWORD:-}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+      KG_META_DSN: ${KG_META_DSN:-}
+      KG_GRAPH_ID_KEY: ${KG_GRAPH_ID_KEY:-}
+      KG_GRAPH_RETENTION_DAYS: ${KG_GRAPH_RETENTION_DAYS:-30}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
     volumes:
       - backend-data:/app/storage
@@ -55,6 +61,7 @@ services:
       - ../database/postgres/init/01_source_schema.sql:/docker-entrypoint-initdb.d/01_source_schema.sql:ro
       - ../database/postgres/init/02_kg_meta_schema.sql:/docker-entrypoint-initdb.d/02_kg_meta_schema.sql:ro
       - ./postgres-reader.sql:/docker-entrypoint-initdb.d/03_reader.sql:ro
+      - ../database/postgres/init/04_graph_versions.sql:/docker-entrypoint-initdb.d/04_graph_versions.sql:ro
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "retail"]
       interval: 10s

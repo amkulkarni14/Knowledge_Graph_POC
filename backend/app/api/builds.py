@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request, Query
 from itertools import islice
+from uuid import UUID
 from fastapi.encoders import jsonable_encoder
 from backend.app.core.dependencies import CurrentSession
 from backend.app.dto.models import BuildRequest, Result, Page, Table
@@ -19,6 +20,11 @@ def start(body: BuildRequest, session: CurrentSession, request: Request):
 def status(session: CurrentSession):
     with session.status_lock:
         return {"data": dict(session.job) if session.job else None}
+
+
+@router.post("/{job_id}/cancel", response_model=Result[dict])
+def cancel(job_id: UUID, session: CurrentSession, request: Request):
+    return {"data": request.app.state.builds.cancel(session, job_id)}
 
 
 @router.post("/stages/{stage}", response_model=Result[dict])

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Alert } from "@mui/material";
 import {
@@ -68,8 +68,17 @@ const stageGroups = [
   { title: "Graph Construction", numbers: [10, 11, 12, 13, 14, 15, 16] },
 ];
 
+const publishedTools = [
+  { view: "explorer", label: "Published Graph Explorer", icon: Compass },
+  { view: "query", label: "Query Workbench", icon: BookOpen },
+  { view: "analytics", label: "Graph Analytics", icon: ChartNoAxesCombined },
+  { view: "schema", label: "Graph Schema", icon: Shapes },
+  { view: "operations", label: "Graph Operations", icon: Activity },
+];
+
 function titleForRoute(pathname: string) {
   if (pathname === "/") return "Overview";
+  if (pathname === "/published-graphs") return "Published Graphs";
   if (pathname === "/explorer") return "Graph Explorer";
   if (pathname.startsWith("/build")) {
     const stage = Number(pathname.split("/")[2]) || 10;
@@ -181,6 +190,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             <LayoutDashboard size={16} />
             {!collapsed && <span className="nav-text">Overview</span>}
           </NavLink>
+          <NavLink to="/published-graphs" className="nav-link" title="Published Graphs" aria-label="Published Graphs">
+            <HardDrive size={16} />
+            {!collapsed && <span className="nav-text">Published Graphs</span>}
+          </NavLink>
+          {publishedTools.map(({ view, label, icon: Icon }) => {
+            const inPublishedWorkspace = location.pathname === "/published-graphs";
+            const active = inPublishedWorkspace && graphView === view;
+            const params = new URLSearchParams(inPublishedWorkspace ? location.search : "");
+            params.set("view", view);
+            if (view !== "explorer") params.delete("node");
+            return (
+              <Link key={view} to={{ pathname: "/published-graphs", search: params.toString() }}
+                className={`nav-link nav-sub-link${active ? " active" : ""}`}
+                title={label} aria-label={label} aria-current={active ? "page" : undefined}>
+                <Icon size={15} />
+                {!collapsed && <span className="nav-text">{label}</span>}
+              </Link>
+            );
+          })}
           {stageGroups.map((group) => (
             <div key={group.title}>
               {!collapsed && (

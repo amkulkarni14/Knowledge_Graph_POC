@@ -29,7 +29,7 @@ Every route except `GET /api/v1/health` and `POST /api/v1/login` requires `Autho
 
 The default account is configured in `.env` (`AUTH_DEFAULT_USERNAME`, `AUTH_DEFAULT_PASSWORD_HASH` as a bcrypt hash). For local development it is `admin` / `admin`; change it before any shared use. Authentication is in `backend/app/core/security.py` (`authenticate()` is the single place to replace with a users-table lookup). If `JWT_SECRET_KEY` is empty a random key is generated per start, so tokens do not survive a restart.
 
-Authentication is not authorization: there are no roles, and session UUIDs are not identities. Author/reviewer names are workflow labels, not verified identities. Bind to loopback for local development and serve over HTTPS if shared.
+Workflow sessions are owned by the authenticated user. Published graph projects support owner and viewer permissions through the PostgreSQL metadata registry. Ontology author and reviewer fields remain workflow labels. Bind to loopback for local development and serve over HTTPS if shared.
 
 ## Configuration
 
@@ -81,7 +81,7 @@ Poll build status until completed, blocked or failed. Blocking validation report
 
 For CSV data, replace sources/sample with multipart sources/upload, then use draft mode "schema". Skip AI for uploaded data unless the live provider is configured; the recorded offline fixture fits only the retail sample.
 
-Snapshot payload {"load_neo4j":true} invokes the existing loader, which writes graph data and constraints. It runs only when explicitly requested and server-configured. Verification uses mocks and does not contact live databases.
+Snapshot payload {"load_neo4j":true} queues staged Neo4j publication and returns a job with HTTP 202. Poll the build status endpoint. See [Published graph platform](../docs/PUBLISHED_GRAPH_PLATFORM.md) for migration, database setup and operation.
 
 ## Tests
 

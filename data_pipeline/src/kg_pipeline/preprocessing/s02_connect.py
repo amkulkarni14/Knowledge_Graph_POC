@@ -92,6 +92,6 @@ def connect_postgres(ctx: PipelineContext, host: str, port: int, dbname: str, us
     ctx.source_info = {"mode": "postgres", "name": src.name, "schemas": src.schemas, **info}
     if not info["read_only"]:
         ctx.log(2, "Session is not read-only by default; read-only is enforced per session", "warning")
-    ctx.log(2, f"Connected to {src.name} as {info['user']} (read-only session, statement timeout on)")
+    ctx.log(2, "Connected to the PostgreSQL source with a read-only session and statement timeout")
     ctx.mark_done(2)
     return ctx.source_info

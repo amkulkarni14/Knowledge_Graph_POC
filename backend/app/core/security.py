@@ -23,10 +23,13 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def authenticate(settings, username: str, password: str) -> str | None:
-    """Return the canonical username on success. Swap this body for a users-table lookup later."""
+    """Authenticate the configured bootstrap account or an active metadata user."""
+    from backend.app.repositories.graph_versions import user_password_hash
+
     known = hmac.compare_digest(username.encode("utf-8"), settings.auth_username.encode("utf-8"))
-    ok = verify_password(password, settings.auth_password_hash if known else _DUMMY_HASH)
-    return settings.auth_username if known and ok else None
+    password_hash = settings.auth_password_hash if known else user_password_hash(username)
+    ok = verify_password(password, password_hash or _DUMMY_HASH)
+    return username if password_hash and ok else None
 
 
 def create_access_token(settings, username: str) -> str:

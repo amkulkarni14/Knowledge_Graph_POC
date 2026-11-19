@@ -16,6 +16,7 @@ const Review = lazy(() => import("./features/ontology/ReviewPages"));
 const Build = lazy(() => import("./features/build/BuildPage"));
 const Storage = lazy(() => import("./features/build/StoragePage"));
 const Explorer = lazy(() => import("./features/query/ExplorerPage"));
+const PublishedGraphs = lazy(() => import("./features/query/PublishedGraphsPage"));
 export function App() {
   const token = useAuthStore((s) => s.token);
   const client = useQueryClient();
@@ -52,6 +53,7 @@ function Workspace() {
       <Suspense fallback={<Feedback pending />}>
         <Routes>
           <Route path="/" element={<Overview />} />
+          <Route path="/published-graphs" element={<PublishedGraphs />} />
           {id && (
             <>
               <Route path="/scope" element={<Scope />} />

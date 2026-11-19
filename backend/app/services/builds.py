@@ -1,11 +1,13 @@
 """Bounded in-process build execution with pollable status."""
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from threading import BoundedSemaphore
 from time import monotonic
 from uuid import uuid4
 from fastapi.encoders import jsonable_encoder
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services.workflow import STAGE_FUNCTIONS, execute, require, rules_for
+from backend.app.services.graph_publication import persist
 
 
 def stage_result(session, stage):
@@ -52,20 +54,47 @@ class BuildRunner:
         self.pool = ThreadPoolExecutor(max_workers=max_jobs, thread_name_prefix="kg-build")
         self.slots = BoundedSemaphore(max_jobs)
 
-    def start(self, session, body):
+    def start(self, session, body, *, publish_as=None):
+        return self._submit(session, body, publish_as)
+
+    def start_publication(self, session, actor):
+        return self._submit(session, None, actor)
+
+    def cancel(self, session, job_id):
+        with session.status_lock:
+            job = session.job
+            if not job or job["id"] != str(job_id):
+                raise ApiError(404, "job_not_found", "Build job does not exist")
+            if job["status"] in ("queued", "running"):
+                job["status"] = "cancelling"
+            elif job["status"] != "cancelling":
+                raise ApiError(409, "job_not_cancellable", "This build can no longer be cancelled")
+            return dict(job)
+
+    @staticmethod
+    def _check_cancelled(session):
+        if session.job["status"] == "cancelling":
+            raise ApiError(409, "build_cancelled", "Build was cancelled")
+
+    def _submit(self, session, body, actor):
         if not session.lock.acquire(blocking=False):
             raise ApiError(409, "session_busy", "Wait for the current operation")
         acquired = False
         try:
-            require(session, 3, 9)
-            rules_for(session, body)
+            if body is None:
+                require(session, 9, 14, 15)
+            else:
+                require(session, 3, 9)
+                rules_for(session, body)
             if not self.slots.acquire(blocking=False):
                 raise ApiError(503, "build_capacity", "Build capacity reached; try again later")
             acquired = True
+            started_at = datetime.now(timezone.utc)
             with session.status_lock:
-                session.job = {"id": str(uuid4()), "status": "queued", "stage": None, "progress": None, "error": None}
+                session.job = {"id": str(uuid4()), "status": "queued", "stage": None, "progress": None,
+                               "error": None, "started_at": started_at.isoformat()}
                 initial = dict(session.job)
-            self.pool.submit(self._run, session, body)
+            self.pool.submit(self._run, session, body, actor, initial["id"], started_at)
             return initial
         except Exception:
             if acquired:
@@ -73,10 +102,11 @@ class BuildRunner:
             session.lock.release()
             raise
 
-    def _run(self, session, body):
+    def _run(self, session, body, actor, version, started_at):
         try:
-            for stage in range(10, 16):
+            for stage in range(10, 16) if body is not None else ():
                 with session.status_lock:
+                    self._check_cancelled(session)
                     session.job.update(status="running", stage=stage, progress=None)
                 run_stage(session, stage, body)
                 if not session.ctx.is_done(stage):
@@ -84,15 +114,32 @@ class BuildRunner:
                         session.job["status"] = "blocked"
                     break
             else:
+                if actor is not None:
+                    def report(phase, processed):
+                        with session.status_lock:
+                            self._check_cancelled(session)
+                            session.job.update(status="running", stage=16,
+                                               progress={"phase": phase, "processed": processed})
+
+                    def commit():
+                        with session.status_lock:
+                            self._check_cancelled(session)
+                            session.job["status"] = "publishing"
+
+                    persist(session, actor, version, report, commit, started_at)
                 with session.status_lock:
+                    self._check_cancelled(session)
                     session.job["status"] = "completed"
         except ApiError as exc:
             with session.status_lock:
-                session.job.update(status="failed", error={"code": exc.code, "message": exc.message})
+                status = "cancelled" if exc.code == "build_cancelled" else "failed"
+                session.job.update(status=status, error={"code": exc.code, "message": exc.message})
         except Exception:
             with session.status_lock:
                 session.job.update(status="failed", error={"code": "build_failed", "message": "Build failed"})
         finally:
+            with session.status_lock:
+                session.job["finished_at"] = datetime.now(timezone.utc).isoformat()
             session.sync()
             session.touched = monotonic()
             session.lock.release()
