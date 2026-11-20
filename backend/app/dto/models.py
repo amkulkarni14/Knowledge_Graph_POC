@@ -29,6 +29,18 @@ class Page(BaseModel, Generic[T]):
     limit: int
 
 
+class StageAdviceRequest(StrictModel):
+    question: Annotated[str, StringConstraints(max_length=600)] = ""
+
+
+class StageAdvice(BaseModel):
+    mode: Literal["ai", "guide"]
+    suggestions: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]] = Field(
+        min_length=1, max_length=3)
+    facts: dict[str, bool | int | str]
+    notice: str | None = None
+
+
 class SessionCreate(StrictModel):
     name: Text
 

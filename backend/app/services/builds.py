@@ -138,7 +138,10 @@ class BuildRunner:
                     else:
                         report("validate_graphml", 0)
                         payload, label_key, relationship_key = graphml
-                        graph = read_graphml(payload, session.ctx.approved_ontology, label_key, relationship_key)
+                        ontology = session.ctx.approved_ontology
+                        if ontology is None:
+                            raise ApiError(409, "ontology_required", "Approve an ontology before publishing GraphML")
+                        graph = read_graphml(payload, ontology, label_key, relationship_key)
                         context = replace(session.ctx, graph=graph, completed=set(session.ctx.completed),
                                           graph_report={"ok": True, "errors": [], "warnings": []},
                                           build_stats={"quarantine": []})

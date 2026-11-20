@@ -175,6 +175,51 @@ def test_saved_ontologies_include_versions_after_workspace_closes(app, client):
     assert list_ontologies(app.state.config.storage_root, "other") == []
 
 
+def test_stage_advice_uses_aggregate_context_without_changing_workflow(client, monkeypatch):
+    from backend.app.services import stage_advice
+
+    base = prepared(client)
+    before = ok(client.get(base))["completed_stages"]
+    completion = Mock(return_value={"suggestions": ["Compare inferred keys with the schema."]})
+    monkeypatch.setattr(stage_advice, "model_completion", completion)
+    response = ok(client.post(base + "/stage-advice/3", json={"question": "How do I review keys?"}))
+    assert response["mode"] == "ai"
+    assert response["facts"]["table_count"] == 7
+    payload = completion.call_args.args[1]
+    assert payload["question"] == "How do I review keys?"
+    assert set(payload) == {"stage", "facts", "checklist", "question"}
+    assert "csv.customers" not in str(payload)
+    assert ok(client.get(base))["completed_stages"] == before
+
+
+def test_every_workflow_stage_has_a_fallback_when_ai_fails(client, monkeypatch):
+    from backend.app.services import stage_advice
+    from backend.app.exceptions.handlers import ApiError
+
+    base = "/api/v1/sessions/" + session(client)
+    failed = Mock(side_effect=ApiError(502, "graph_ai_failed", "provider failure"))
+    monkeypatch.setattr(stage_advice, "model_completion", failed)
+    for stage in range(1, 20):
+        response = ok(client.post(base + f"/stage-advice/{stage}", json={}))
+        assert response["mode"] == "guide" and len(response["suggestions"]) == 2
+    assert client.post(base + "/stage-advice/20", json={}).status_code == 404
+    assert client.post(base + "/stage-advice/2", json={"question": "x" * 601}).status_code == 422
+
+
+def test_graphml_preview_can_check_structure_before_approval(client):
+    base = "/api/v1/sessions/" + session(client)
+    data = b"""<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+      <key id="label" for="node" attr.name="label" attr.type="string"/>
+      <graph edgedefault="directed"><node id="n1"><data key="label">A</data></node></graph>
+    </graphml>"""
+    files = {"file": ("graph.graphml", data, "application/xml")}
+    preview = ok(client.post(base + "/graphs/graphml/preview", files=files))
+    assert preview["ontology_validated"] is False
+    assert preview["nodes"] == 1 and preview["labels"] == {"A": 1}
+    assert client.post(base + "/graphs/graphml/publish", files=files).status_code == 409
+    assert client.post(approved(client) + "/graphs/graphml/preview", files=files).status_code == 422
+
+
 def test_expired_session_is_closed(app, client):
     base = scoped(client)
     from uuid import UUID

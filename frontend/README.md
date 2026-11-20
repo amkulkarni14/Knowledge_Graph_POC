@@ -38,6 +38,8 @@ For Customer 360, upload the CSV files in `../data/samples/customer360` together
 
 Home lists saved working drafts and numbered ontology versions for your account. These remain visible after a workspace closes. Columns in scope are stored as planning information. Schema extraction uses the tables in scope.
 
+**AI stage help** is available throughout the workflow and in the workspace graph explorer. It uses Groq when `KG_GRAPH_AI_ENABLED=true`, `KG_GRAPH_AI_MODEL`, and `GROQ_API_KEY` are configured in the backend. A request sends aggregate workflow counts, status, and the optional question you enter. The assistant offers a stage checklist when the provider is unavailable. Suggestions require user review and do not modify the workspace.
+
 ## Contracts and checks
 
 ```powershell

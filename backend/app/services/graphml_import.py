@@ -1,4 +1,4 @@
-﻿"""Parse bounded directed GraphML into an approved ontology's graph."""
+﻿"""Parse bounded directed GraphML and optionally validate it against an ontology."""
 import hashlib
 import json
 import math
@@ -19,7 +19,7 @@ def invalid(message):
     return ApiError(422, "invalid_graphml", message)
 
 
-def read_graphml(payload, ontology, label_key="label", relationship_key="type"):
+def read_graphml(payload, ontology=None, label_key="label", relationship_key="type"):
     if len(payload) > MAX_GRAPHML_BYTES:
         raise ApiError(413, "graphml_too_large", "GraphML uploads are limited to 4 MiB")
     try:
@@ -88,8 +88,9 @@ def read_graphml(payload, ontology, label_key="label", relationship_key="type"):
         return result
 
     graph = nx.MultiDiGraph()
-    classes = {cls.name: cls for cls in ontology.classes}
-    relationships = {(rel.name, rel.source_class, rel.target_class): rel for rel in ontology.relationships}
+    classes = {cls.name: cls for cls in ontology.classes} if ontology else {}
+    relationships = {(rel.name, rel.source_class, rel.target_class): rel
+                     for rel in ontology.relationships} if ontology else {}
     identifiers = {}
     for element in nodes:
         xml_id = element.get("id")
@@ -97,9 +98,10 @@ def read_graphml(payload, ontology, label_key="label", relationship_key="type"):
         node_id = record.get("id", xml_id)
         label = source.get(label_key)
         if (not xml_id or xml_id in identifiers or not isinstance(node_id, str) or not node_id.strip()
-                or len(node_id) > 300 or node_id in graph or not isinstance(label, str) or label not in classes):
-            raise invalid("Node IDs must be unique and each node must have a known ontology label")
-        attributes = mapped(source, classes[label].attributes)
+                or len(node_id) > 300 or node_id in graph or not isinstance(label, str) or not label.strip() or len(label) > 63
+                or (ontology is not None and label not in classes)):
+            raise invalid("Node IDs must be unique and each node must have a valid label for this import")
+        attributes = mapped(source, classes[label].attributes) if ontology else {}
         attributes["label"] = label
         graph.add_node(node_id, **attributes)
         identifiers[xml_id] = node_id
@@ -116,20 +118,21 @@ def read_graphml(payload, ontology, label_key="label", relationship_key="type"):
             edge_ids.add(identifier)
         source, record = attrs(element, "key")
         kind = source.get(relationship_key)
-        if not isinstance(kind, str):
+        if not isinstance(kind, str) or not kind.strip() or len(kind) > 63:
             raise invalid("Every relationship must have an ontology type")
         signature = (kind, graph.nodes[start]["label"], graph.nodes[end]["label"])
         relation = relationships.get(signature)
         key = record.get("key", source.get("_kg_edge_key", identifier if identifier is not None else f"edge-{index}"))
-        if not relation or not isinstance(key, str) or not key or len(key) > 300 or graph.has_edge(start, end, key):
+        if (ontology is not None and not relation) or not isinstance(key, str) or not key or len(key) > 300 or graph.has_edge(start, end, key):
             raise invalid("Relationship conflicts with the approved ontology or duplicates an edge")
-        attributes = mapped(source, relation.properties)
+        attributes = mapped(source, relation.properties) if relation else {}
         attributes["type"] = kind
         graph.add_edge(start, end, key=key, **attributes)
-        per_type = relation_graphs.setdefault(signature, nx.MultiDiGraph())
-        if not relation.multi_edge and per_type.has_edge(start, end):
-            raise invalid("An ontology relationship disallows parallel edges")
-        per_type.add_edge(start, end)
+        if relation:
+            per_type = relation_graphs.setdefault(signature, nx.MultiDiGraph())
+            if not relation.multi_edge and per_type.has_edge(start, end):
+                raise invalid("An ontology relationship disallows parallel edges")
+            per_type.add_edge(start, end)
 
     for signature, part in relation_graphs.items():
         relation = relationships[signature]
@@ -137,8 +140,9 @@ def read_graphml(payload, ontology, label_key="label", relationship_key="type"):
                 or (relation.cardinality.value in ("1:1", "1:N") and any(degree > 1 for _, degree in part.in_degree()))
                 or (not relation.allow_cycles and not nx.is_directed_acyclic_graph(part))):
             raise invalid("A relationship violates ontology cardinality or cycle rules")
-    graph.graph.update(ontology_id=ontology.ontology_id, ontology_version=ontology.version, import_origin="graphml",
-                       import_digest=hashlib.sha256(payload).hexdigest())
+    if ontology:
+        graph.graph.update(ontology_id=ontology.ontology_id, ontology_version=ontology.version, import_origin="graphml",
+                           import_digest=hashlib.sha256(payload).hexdigest())
     return graph
 
 

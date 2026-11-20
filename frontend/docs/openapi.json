@@ -419,6 +419,68 @@
         }
       }
     },
+    "/api/v1/sessions/{session_id}/stage-advice/{stage}": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Advice",
+        "operationId": "advice_api_v1_sessions__session_id__stage_advice__stage__post",
+        "parameters": [
+          {
+            "name": "stage",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Stage"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageAdviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_StageAdvice_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sessions/{session_id}/sources/postgres": {
       "post": {
         "tags": [
@@ -7095,6 +7157,18 @@
         ],
         "title": "Result[SessionView]"
       },
+      "Result_StageAdvice_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StageAdvice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[StageAdvice]"
+      },
       "Result_Union_dict__NoneType__": {
         "properties": {
           "data": {
@@ -7718,6 +7792,77 @@
         "additionalProperties": false,
         "type": "object",
         "title": "SnapshotRequest"
+      },
+      "StageAdvice": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "guide"
+            ],
+            "title": "Mode"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Suggestions"
+          },
+          "facts": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Facts"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "suggestions",
+          "facts"
+        ],
+        "title": "StageAdvice"
+      },
+      "StageAdviceRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 600,
+            "title": "Question",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StageAdviceRequest"
       },
       "TableInfo": {
         "properties": {

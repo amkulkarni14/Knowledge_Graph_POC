@@ -28,9 +28,10 @@ def preview_graphml(session: CurrentSession, file: UploadFile = File(),
                     relationship_key: str = Form("type", min_length=1, max_length=63)):
     payload, label_key, relationship_key = graphml_upload(file, label_key, relationship_key)
     with operation(session):
-        require(session, 9)
-        graph = read_graphml(payload, session.ctx.approved_ontology, label_key, relationship_key)
-        return {"data": {"project": session.name, **summarize(graph)}}
+        ontology = session.ctx.approved_ontology if session.ctx.is_done(9) else None
+        graph = read_graphml(payload, ontology, label_key, relationship_key)
+        return {"data": {"project": session.name, "ontology_validated": ontology is not None,
+                         **summarize(graph)}}
 
 
 @router.post("/graphml/publish", status_code=202, response_model=Result[dict])

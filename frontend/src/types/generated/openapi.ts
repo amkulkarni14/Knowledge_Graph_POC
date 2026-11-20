@@ -155,6 +155,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/stage-advice/{stage}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advice */
+        post: operations["advice_api_v1_sessions__session_id__stage_advice__stage__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/sources/postgres": {
         parameters: {
             query?: never;
@@ -2055,6 +2072,10 @@ export interface components {
         Result_SessionView_: {
             data: components["schemas"]["SessionView"];
         };
+        /** Result[StageAdvice] */
+        Result_StageAdvice_: {
+            data: components["schemas"]["StageAdvice"];
+        };
         /** Result[Union[dict, NoneType]] */
         Result_Union_dict__NoneType__: {
             /** Data */
@@ -2279,6 +2300,30 @@ export interface components {
              * @default false
              */
             load_neo4j: boolean;
+        };
+        /** StageAdvice */
+        StageAdvice: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "ai" | "guide";
+            /** Suggestions */
+            suggestions: string[];
+            /** Facts */
+            facts: {
+                [key: string]: boolean | number | string;
+            };
+            /** Notice */
+            notice?: string | null;
+        };
+        /** StageAdviceRequest */
+        StageAdviceRequest: {
+            /**
+             * Question
+             * @default
+             */
+            question: string;
         };
         /** TableInfo */
         TableInfo: {
@@ -2735,6 +2780,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Result_Page_dict__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    advice_api_v1_sessions__session_id__stage_advice__stage__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stage: number;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StageAdviceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_StageAdvice_"];
                 };
             };
             /** @description Validation Error */

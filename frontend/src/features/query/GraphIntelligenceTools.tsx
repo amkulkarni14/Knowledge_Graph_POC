@@ -4,6 +4,8 @@ import { Alert, Button, MenuItem, TextField } from "@mui/material";
 import { Link } from "react-router-dom";
 import { api, get, send, sessionPath } from "../../api/client";
 import { useSessionStore } from "../../app/store";
+import { stageOrder, stageRoutes } from "../../constants/stages.constants";
+import { stageNavigation } from "../../constants/stageNavigation";
 import { useWorkspace } from "../../shared/hooks/useWorkspace";
 import {
   DataTable,
@@ -302,6 +304,10 @@ export function GraphmlImport() {
   const session = useSessionStore((state) => state.id);
   const { done, session: workflow } = useWorkspace();
   const approved = done.includes(9);
+  const approvalStep = stageOrder.find(
+    (stage) => stage <= 9 && !done.includes(stage),
+  );
+  const importStage = approvalStep ? stageNavigation[approvalStep] : undefined;
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [labelKey, setLabelKey] = useState("label");
@@ -328,14 +334,31 @@ export function GraphmlImport() {
           import uses the active workflow’s approved ontology.
         </p>
         {!session && (
-          <Alert severity="info">
-            Open a project workflow to import GraphML.
+          <Alert
+            severity="info"
+            action={
+              <Button component={Link} to="/">
+                Open a workspace
+              </Button>
+            }
+          >
+            Open or create a workspace to preview a GraphML file.
           </Alert>
         )}
         {session && !workflow.isPending && !approved && (
-          <Alert severity="info">
-            Complete ontology approval and versioning in this workflow before
-            importing.
+          <Alert
+            severity="info"
+            action={
+              approvalStep &&
+              importStage && (
+                <Button component={Link} to={stageRoutes[approvalStep]}>
+                  Go to {importStage.title}
+                </Button>
+              )
+            }
+          >
+            You can preview the file now. Approve an ontology in this workflow
+            to publish it.
           </Alert>
         )}
         <div className="form-stack mt-4">
@@ -389,14 +412,18 @@ export function GraphmlImport() {
           <div className="toolbar">
             <Button
               variant="contained"
-              disabled={!session || !approved || !file || busy}
+              disabled={!session || !file || busy || workflow.isPending}
               onClick={() => preview.mutate()}
             >
-              Validate and preview
+              {approved ? "Validate and preview" : "Preview GraphML"}
             </Button>
             <Button
               disabled={
-                !preview.data || busy || !session || !approved || !!publish.data
+                preview.data?.ontology_validated !== true ||
+                busy ||
+                !session ||
+                !approved ||
+                !!publish.data
               }
               onClick={() => publish.mutate()}
             >
@@ -409,6 +436,12 @@ export function GraphmlImport() {
             )}
           </div>
           <Feedback pending={busy} error={preview.error ?? publish.error} />
+          {preview.data?.ontology_validated === false && (
+            <Alert severity="info">
+              Structure checked. Validate again after approving an ontology to
+              enable publishing.
+            </Alert>
+          )}
           {preview.data && <Report value={preview.data} />}
           {publish.data && (
             <Alert severity="success">GraphML publication queued.</Alert>

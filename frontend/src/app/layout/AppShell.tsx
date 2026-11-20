@@ -30,11 +30,12 @@ import {
 } from "../../shared/hooks/useWorkspace";
 import { sessionsApi } from "../../api/sessionsApi";
 import { authApi } from "../../api/authApi";
-import { stageGroups, stageRoutes } from "../../constants/stages.constants";
+import { stageForPath, stageGroups, stageRoutes } from "../../constants/stages.constants";
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
 import { stageNavigation } from "../../constants/stageNavigation";
 import { StageContinuation } from "./StageContinuation";
+import { StageHelp } from "./StageHelp";
 import { StageStepper } from "./StageStepper";
 
 const publishedTools = [
@@ -78,6 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const client = useQueryClient();
   const location = useLocation();
   const graphView = new URLSearchParams(location.search).get("view");
+  const adviceStage = stageForPath(location.pathname) ??
+    (location.pathname === "/explorer" ? graphView === "path" ? 18 : graphView === "metrics" ? 19 : 17 : undefined);
   const [reset, setReset] = useState(false);
   const authUser = useAuthStore((s) => s.user?.username);
   async function signOut() {
@@ -290,6 +293,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="topbar-right">
+            {id && adviceStage && <StageHelp key={`${id}/${adviceStage}`} id={id} stage={adviceStage} />}
             {id && <span className="workspace-badge" title={session.data?.name}>{session.data?.name ?? "Loading workspace…"}</span>}
             <span className="topbar-divider" />
             <span className="connection-row" aria-label={health.data ? "API connected" : health.isError ? "API disconnected" : "Checking API connection"}>

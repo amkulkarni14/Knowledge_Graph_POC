@@ -54,7 +54,9 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
     page.getByRole("link", { name: "Continue to Goal & Scope" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Continue to Goal & Scope" }).click();
-  await expect(page.getByRole("heading", { name: "Define your scope" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Define your scope" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Home", exact: true }).click();
   await expect(
     page.getByRole("progressbar", { name: "Workflow completion" }),
@@ -237,6 +239,59 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await expect(
     savedOntology.getByText("Working draft", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create workspace" }),
+  ).toBeVisible();
+});
+
+test("stage help follows the current workflow stage and offers a checklist", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.getByLabel("Workspace name").fill("Stage help verification");
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByRole("button", { name: "AI stage help" }).click();
+  const help = page.getByRole("dialog", { name: "AI stage help" });
+  await expect(help.getByText("Data Sources", { exact: true })).toBeVisible();
+  await help
+    .getByRole("textbox", { name: "Question (optional)" })
+    .fill("How should I prepare CSV files?");
+  await page.route("**/stage-advice/2", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      question: "How should I prepare CSV files?",
+    });
+    await route.fulfill({
+      json: {
+        data: {
+          mode: "guide",
+          facts: {},
+          notice:
+            "Configure workflow AI in the backend to generate tailored suggestions.",
+          suggestions: ["Verify that each entity has a stable identifier."],
+        },
+      },
+    });
+  });
+  await help.getByRole("button", { name: "Get stage suggestions" }).click();
+  await expect(
+    help.getByRole("heading", { name: "Stage checklist" }),
+  ).toBeVisible();
+  await expect(help.getByText(/stable identifier/)).toBeVisible();
+  await help.getByRole("button", { name: "Close AI stage help" }).click();
+  await page.getByRole("link", { name: "Goal & Scope", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Define your scope" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "AI stage help" }).click();
+  await expect(help.getByText("Goal & Scope", { exact: true })).toBeVisible();
+  await expect(
+    help.getByRole("textbox", { name: "Question (optional)" }),
+  ).toHaveValue("");
+  await help.getByRole("button", { name: "Close AI stage help" }).click();
+  await page
+    .getByRole("button", { name: "Reset workspace", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Create workspace" }),
   ).toBeVisible();

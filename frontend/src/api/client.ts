@@ -23,8 +23,8 @@ api.interceptors.request.use(async (config) => {
   if (!match) return config;
   const [, id, path] = match;
   if (
-    config.method === "get" &&
-    ["", "/events", "/builds/status"].includes(path)
+    path.startsWith("/stage-advice/") ||
+    (config.method === "get" && ["", "/events", "/builds/status"].includes(path))
   )
     return config;
   const previous = tails.get(id) ?? Promise.resolve();

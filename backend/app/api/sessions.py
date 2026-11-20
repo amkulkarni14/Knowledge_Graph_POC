@@ -2,8 +2,11 @@ from fastapi import APIRouter, Request, Response, Query
 from kg_pipeline.core.context import STAGES
 from kg_pipeline.core.s01_scope import run as scope_run
 from backend.app.core.dependencies import CurrentSession, CurrentUser
-from backend.app.dto.models import Result, SessionCreate, SessionView, ScopeRequest, Page
+from backend.app.dto.models import Result, SessionCreate, SessionView, ScopeRequest, Page, StageAdvice, StageAdviceRequest
 from backend.app.services.workflow import execute, operation
+
+from backend.app.exceptions.handlers import ApiError
+from backend.app.services import stage_advice
 
 router = APIRouter(tags=["sessions"])
 
@@ -52,3 +55,12 @@ def events(session: CurrentSession, offset: int = Query(0, ge=0), limit: int = Q
     # A snapshot of append-only events is safe to poll while a job is running.
     items = list(session.ctx.events)
     return {"data": {"items": items[offset:offset + limit], "total": len(items), "offset": offset, "limit": limit}}
+
+
+@router.post("/sessions/{session_id}/stage-advice/{stage}", response_model=Result[StageAdvice])
+def advice(stage: int, body: StageAdviceRequest, session: CurrentSession):
+    if stage not in stage_advice.GUIDES:
+        raise ApiError(404, "stage_not_found", "Choose a workflow stage or graph exploration view")
+    with operation(session):
+        facts = stage_advice.context_for(session, stage)
+    return {"data": stage_advice.advise(stage, facts, body.question)}
