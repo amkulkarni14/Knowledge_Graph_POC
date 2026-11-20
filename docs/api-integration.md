@@ -60,7 +60,6 @@ No API existed before this change. Routes below are relative to /api/v1/sessions
 | components/bootstrap.py | Session context/reset | POST /api/v1/sessions; GET/DELETE session | Session lifecycle |
 | pages/home.py | Sample pipeline demonstration | Individual stage APIs plus POST /builds after explicit review/approval | Overview |
 | pages/s01_scope.py | Scope/questions/tables/sensitive columns | GET/PUT /scope | Projects/scope |
-| pages/s02_connect.py | Sample source | POST /sources/sample | Sources |
 | pages/s02_connect.py | Read-only PostgreSQL connection | POST /sources/postgres | Sources |
 | pages/s02_connect.py | CSV files, inferred keys/links, warnings | POST /sources/upload; GET /sources | Upload/source reports |
 | pages/s03_schema.py | Catalog, columns, keys, metadata | POST /metadata/extract; GET /metadata, /metadata/tables, /metadata/columns, /metadata/preview | Schema |
@@ -95,7 +94,7 @@ The home page's automatic demo review is not an API approval bypass. API clients
 - PostgreSQL accepts host, port, dbname, user, password, sslmode and schemas, reusing the existing read-only connector.
 - Upload accepts repeated multipart fields named files. All files validate before source replacement. Excel is unsupported.
 - Metadata columns/preview require a qualified catalog table. Preview limit is 100.
-- Draft creation takes mode new/template/schema with optional ontology_id, namespace, name and author. Template mode requires the sample source.
+- Draft creation takes mode new or schema with optional ontology_id, namespace, name and author.
 - Draft replacement takes {"ontology":{...}}. Class/relationship creation takes {"definition":{...}}. Unknown nested fields are rejected.
 - Relationship deletion takes the full key as a query parameter, for example Customer-[PLACED]->Order.
 - Suggestions take actor, use_groq, include_samples and allowed_tables. An explicit empty table allowlist is rejected.
@@ -130,7 +129,7 @@ No React routes, Zustand stores, Axios implementation or production frontend bui
 
 ## Verification
 
-The backend suite covers validation/redaction, sessions/expiration, concurrency rejection, workflow invalidation, failed-upload preservation, CSV/sample builds, offline AI parity, version rollback, upload limits, CORS, polling, storage restoration, downloads and corrupt exports.
+The backend suite covers validation/redaction, sessions/expiration, concurrency rejection, workflow invalidation, failed-upload preservation, CSV builds, review preview parity, version rollback, upload limits, CORS, polling, storage restoration, downloads and corrupt exports.
 
 The unchanged pipeline/CLI/Streamlit regression suite is tested separately. Offline tests do not establish live-service or React parity.
 

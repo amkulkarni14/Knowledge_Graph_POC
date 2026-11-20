@@ -13,6 +13,7 @@ from backend.app.dto.models import (Result, Page, DraftRequest, OntologyRequest,
     ApprovalRequest, ActorRequest, RejectRequest, Identifier)
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services import ontology as service
+from backend.app.repositories.library import save_working_draft
 from backend.app.services.workflow import execute, operation, require, storage, clear_from
 
 router = APIRouter(prefix="/sessions/{session_id}/ontology", tags=["ontology"])
@@ -26,10 +27,6 @@ def draft(body: DraftRequest, session: CurrentSession):
             with storage(session):
                 result = manual.draft_from_schema(session.ctx, body.ontology_id, body.namespace, body.name, body.author)
             onto, notes = result.ontology, result.notes
-        elif body.mode == "template":
-            if session.ctx.source_info.get("mode") != "sample":
-                raise ApiError(409, "template_source", "The retail template requires the sample source")
-            onto, notes = manual.load_template(), []
         else:
             onto, notes = manual.new_ontology(body.ontology_id, body.namespace, body.name, body.author), []
         service.update_editor(session, onto)
@@ -62,7 +59,12 @@ def save(session: CurrentSession):
     with operation(session):
         onto = service.editor(session)
         service.check_mappings(session, onto)
-        saved = execute(session, 5, manual.run, onto=onto)
+        def save(candidate):
+            saved = manual.run(candidate, onto=onto)
+            save_working_draft(session.root, saved)
+            return saved
+
+        saved = execute(session, 5, save)
         session.saved_draft = saved.model_copy(deep=True)
         return {"data": saved}
 
@@ -143,9 +145,9 @@ def suggestions(body: AIRequest, session: CurrentSession):
         if body.allowed_tables is not None and (not body.allowed_tables or
                 set(body.allowed_tables) - set(session.ctx.catalog.tables)):
             raise ApiError(422, "invalid_allowlist", "Choose existing catalog tables")
-        if body.use_groq and not ai.settings.groq_available:
+        if not ai.settings.groq_available:
             raise ApiError(409, "provider_not_configured", "The AI provider is not configured")
-        return {"data": execute(session, 6, ai.run, actor=body.actor, use_groq=body.use_groq,
+        return {"data": execute(session, 6, ai.run, actor=body.actor, use_groq=True,
                                include_samples=body.include_samples,
                                allowed_tables=set(body.allowed_tables) if body.allowed_tables else None)}
 

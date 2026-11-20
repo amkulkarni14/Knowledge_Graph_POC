@@ -21,12 +21,12 @@ Open **http://127.0.0.1:5173**. The default API URL is `http://127.0.0.1:8000/ap
 
 On Windows, `npm22.cmd` uses Node `22.23.5` from NVM for Windows for that command and its child processes only. If needed, run `nvm install 22.23.5` once. No `nvm use` is needed; your default Node version can stay on 14. The wrapper runs npm in `frontend`. For the npm checks below, run `cd frontend` first and replace `npm` with `.\npm22.cmd` if your default Node is 14. Dependencies are locked in `package-lock.json`.
 
-## Guided sample workflow
+## Guided workflow
 
-1. Create a workspace and save scope with a project name and at least one question.
-2. Connect the retail sample, extract metadata, and analyze it.
-3. Create a retail template draft and save it.
-4. Generate offline suggestions or explicitly skip AI.
+1. Sign in to Home, create a workspace, and upload CSV files or connect to PostgreSQL.
+2. Save the project scope, then extract and analyze its schema. To reuse settings, create a template in **Domains**, then select it and choose **Use domain** in **Goal & Scope**.
+3. Create a schema-derived ontology or start with an empty ontology, then save the draft.
+4. Generate suggestions with Groq or skip AI.
 5. Review suggestions and apply review. Invalid suggestions require editing before acceptance. Configure cycle/watermark rules when appropriate.
 6. Validate the ontology. Enter its reviewed author and a different reviewer, then explicitly approve it.
 7. Run stages individually or confirm a complete build (stages 10–15). Monitor real status and events.
@@ -34,7 +34,9 @@ On Windows, `npm22.cmd` uses Node `22.23.5` from NVM for Windows for that comman
 9. Explore the current graph or a saved snapshot, inspect properties, find undirected paths, review metrics, and download artifacts.
 10. Reset the workspace to delete its session.
 
-For Customer 360, upload the CSV files in `../data/samples/customer360` together, choose a schema-derived ontology, and skip AI unless a live provider is explicitly desired. The offline AI fixture fits the retail source only. No live service connection was exercised during development.
+For Customer 360, upload the CSV files in `../data/samples/customer360` together, choose a schema-derived ontology, and skip AI unless a live provider is explicitly desired.
+
+Home lists saved working drafts and numbered ontology versions for your account. These remain visible after a workspace closes. Columns in scope are stored as planning information. Schema extraction uses the tables in scope.
 
 ## Contracts and checks
 

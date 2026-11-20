@@ -19,6 +19,11 @@ def create(body: SessionCreate, request: Request, user: CurrentUser):
     return {"data": session.view(request.app.state.config.session_ttl_seconds)}
 
 
+@router.get("/sessions", response_model=Result[list[SessionView]])
+def list_sessions(request: Request, user: CurrentUser):
+    return {"data": request.app.state.sessions.list_owned(user.username)}
+
+
 @router.get("/sessions/{session_id}", response_model=Result[SessionView])
 def read(session: CurrentSession, request: Request):
     return {"data": session.view(request.app.state.config.session_ttl_seconds)}

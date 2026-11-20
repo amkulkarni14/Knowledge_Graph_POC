@@ -3,9 +3,9 @@
 | Existing Streamlit page/component | React implementation | Existing API usage |
 |---|---|---|
 | app, bootstrap, layout | AppShell, OverviewPage, session store | sessions, stages, events |
-| home | OverviewPage | guided sample entry; explicit review/approval |
+| home | OverviewPage | Home dashboard, workspace progress, and graph and ontology summaries |
 | s01_scope | ScopePage | scope read/save |
-| s02_connect | SourcesPage | sample, PostgreSQL, multipart upload, source status |
+| s02_connect | SourcesPage | PostgreSQL, CSV upload, and source status |
 | s03_schema | MetadataPage | extraction, catalog, tables, columns, preview |
 | s04_analysis | MetadataPage analysis route | analyze, analysis results |
 | s05_manual | OntologyPage, OntologyCanvas, AttributeEditor | draft and class/relationship editing, save/revert |

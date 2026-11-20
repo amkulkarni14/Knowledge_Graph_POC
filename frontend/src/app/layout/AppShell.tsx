@@ -10,23 +10,15 @@ import {
   PanelLeftOpen,
   Activity,
   RotateCcw,
-  Database,
-  ScanSearch,
   ChartNoAxesCombined,
   Shapes,
   Sparkles,
-  ClipboardCheck,
   BadgeCheck,
-  History,
-  ListChecks,
-  Rows3,
-  ShieldCheck,
   Workflow,
   HardDrive,
   BookOpen,
   ChevronDown,
   ChevronRight,
-  type LucideIcon,
   LogOut,
 } from "lucide-react";
 import { useSessionStore, useUiStore, useGraphStore } from "../store";
@@ -38,35 +30,11 @@ import {
 } from "../../shared/hooks/useWorkspace";
 import { sessionsApi } from "../../api/sessionsApi";
 import { authApi } from "../../api/authApi";
-import { stageRoutes } from "../../constants/stages.constants";
+import { stageGroups, stageRoutes } from "../../constants/stages.constants";
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
+import { stageNavigation } from "../../constants/stageNavigation";
 import { StageStepper } from "./StageStepper";
-
-const stageNavigation: Record<number, { title: string; icon: LucideIcon }> = {
-  1: { title: "Goal & Scope", icon: Compass },
-  2: { title: "Data Sources", icon: Database },
-  3: { title: "Schema Extraction", icon: ScanSearch },
-  4: { title: "Schema Analysis", icon: ChartNoAxesCombined },
-  5: { title: "Ontology Studio", icon: Shapes },
-  6: { title: "AI Suggestions", icon: Sparkles },
-  7: { title: "Review & Approval", icon: ClipboardCheck },
-  8: { title: "Ontology Validation", icon: BadgeCheck },
-  9: { title: "Ontology Versioning", icon: History },
-  10: { title: "Build Plan", icon: ListChecks },
-  11: { title: "Data Extraction", icon: Rows3 },
-  12: { title: "Data Quality", icon: ShieldCheck },
-  13: { title: "Cleaning & Entity Resolution", icon: Workflow },
-  14: { title: "Graph Construction", icon: Network },
-  15: { title: "Graph Validation", icon: BadgeCheck },
-  16: { title: "Storage & Snapshots", icon: HardDrive },
-};
-
-const stageGroups = [
-  { title: "Data & Metadata", numbers: [1, 2, 3, 4] },
-  { title: "Ontology Engineering", numbers: [5, 6, 7, 8, 9] },
-  { title: "Graph Construction", numbers: [10, 11, 12, 13, 14, 15, 16] },
-];
 
 const publishedTools = [
   { view: "explorer", label: "Published Graph Explorer", icon: Compass },
@@ -79,7 +47,8 @@ const publishedTools = [
 ];
 
 function titleForRoute(pathname: string) {
-  if (pathname === "/") return "Overview";
+  if (pathname === "/") return "Home";
+  if (pathname === "/domains") return "Domains";
   if (pathname === "/published-graphs") return "Published Graphs";
   if (pathname === "/explorer") return "Graph Explorer";
   if (pathname.startsWith("/build")) {
@@ -159,6 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   async function close() {
     await remove.mutateAsync();
+    void client.invalidateQueries({ queryKey: ["workspaces"] });
     await client.cancelQueries({ queryKey: ["workspace", id] });
     client.removeQueries({ queryKey: ["workspace", id] });
     useSessionStore.getState().setSession(null);
@@ -188,9 +158,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="sidebar-nav">
           {!collapsed && <div className="nav-group">Workspace</div>}
-          <NavLink to="/" end className="nav-link" title="Overview">
+          <NavLink to="/" end className="nav-link" title="Home" aria-label="Home">
             <LayoutDashboard size={16} />
-            {!collapsed && <span className="nav-text">Overview</span>}
+            {!collapsed && <span className="nav-text">Home</span>}
+          </NavLink>
+          <NavLink to="/domains" className="nav-link" title="Domains" aria-label="Domains">
+            <Shapes size={16} />
+            {!collapsed && <span className="nav-text">Domains</span>}
           </NavLink>
           <NavLink to="/published-graphs" className="nav-link" title="Published Graphs" aria-label="Published Graphs">
             <HardDrive size={16} />
@@ -211,7 +185,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
-          {stageGroups.map((group) => (
+          {id && stageGroups.map((group) => (
             <div key={group.title}>
               {!collapsed && (
                 <button
@@ -223,17 +197,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                   {group.title}
                 </button>
               )}
-              {(!collapsed && collapsedGroups.includes(group.title) ? [] : stages.data ?? [])
-                ?.filter((stage) => group.numbers.includes(stage.no))
+              {(!collapsed && collapsedGroups.includes(group.title) ? [] : group.numbers)
                 .map((stage) => {
-                  const item = stageNavigation[stage.no];
+                  const item = stageNavigation[stage];
                   if (!item) return null;
                   const Icon = item.icon;
-                  const complete = session.data?.completed_stages.includes(stage.no) ?? false;
+                  const complete = session.data?.completed_stages.includes(stage) ?? false;
                   return (
                     <NavLink
-                      to={stageRoutes[stage.no]}
-                      key={stage.no}
+                      to={stageRoutes[stage]}
+                      key={stage}
                       className="nav-link"
                       title={item.title}
                       aria-label={item.title}
@@ -250,7 +223,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 })}
             </div>
           ))}
-          {!collapsed && (
+          {id && !collapsed && (
             <button
               className="nav-group nav-group-toggle"
               aria-expanded={!collapsedGroups.includes("Graph Intelligence")}
@@ -260,7 +233,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               Graph Intelligence
             </button>
           )}
-          {(collapsed || !collapsedGroups.includes("Graph Intelligence")) && (
+          {id && (collapsed || !collapsedGroups.includes("Graph Intelligence")) && (
             <>
               <NavLink to="/explorer" end className={({ isActive }) => `nav-link ${isActive && graphView !== "path" && graphView !== "metrics" ? "active" : ""}`} title="Graph Explorer" aria-label="Graph Explorer">
                 <Compass size={16} />

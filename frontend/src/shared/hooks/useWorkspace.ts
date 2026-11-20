@@ -9,7 +9,10 @@ export const useSession = () => {
     queryKey: ["workspace", id, "session"],
     queryFn: ({ signal }) => sessionsApi.read(id!, signal),
     enabled: !!id,
-    refetchInterval: 10000,
+    refetchInterval: (query) =>
+      ["queued", "running", "cancelling", "publishing"].includes(String(query.state.data?.job?.status))
+        ? 1500
+        : 10000,
     retry: false,
   });
 };

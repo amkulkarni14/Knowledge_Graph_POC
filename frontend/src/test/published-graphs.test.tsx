@@ -68,6 +68,7 @@ describe("published graph workspace", () => {
   it("loads an entity and requests its bounded two-hop neighborhood", async () => {
     const user = userEvent.setup();
     open("explorer");
+    await user.click(await screen.findByRole("button", { name: /^Search$/ }));
     await user.click(await screen.findByRole("button", { name: "Order:1001" }));
     await screen.findByLabelText("Test graph canvas");
     await user.click(screen.getByRole("button", { name: "Expand two hops" }));

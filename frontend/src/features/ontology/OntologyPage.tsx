@@ -24,9 +24,9 @@ const split = (v: string) =>
     .filter(Boolean);
 export default function OntologyPage() {
   const { id, done, can } = useWorkspace();
-  const [mode, setMode] = useState<Schema<"DraftRequest">["mode"]>("template");
-  const [ontologyId, setOntologyId] = useState("retail");
-  const [name, setName] = useState("Retail Knowledge Graph");
+  const [mode, setMode] = useState<Schema<"DraftRequest">["mode"]>("schema");
+  const [ontologyId, setOntologyId] = useState("knowledge-graph");
+  const [name, setName] = useState("Knowledge Graph");
   const [author, setAuthor] = useState("data.modeller");
   const [tab, setTab] = useState(0);
   const [selected, setSelected] = useState("");
@@ -215,7 +215,6 @@ export default function OntologyPage() {
               onChange={(e) => setMode(e.target.value as typeof mode)}
             >
               {[
-                ["template", "Retail template"],
                 ["schema", "Draft from schema"],
                 ["new", "Empty ontology"],
               ].map(([v, l]) => (

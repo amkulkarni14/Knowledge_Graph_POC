@@ -1,20 +1,13 @@
 from fastapi import APIRouter, Request
 from starlette.concurrency import run_in_threadpool
-from kg_pipeline.config import settings
 from kg_pipeline.preprocessing import s02_connect
 from kg_pipeline.preprocessing.connectors.csv_source import CsvUpload, UploadLimits, ALLOWED_EXTENSIONS
 from backend.app.core.dependencies import CurrentSession
 from backend.app.dto.models import PostgresRequest, Result
 from backend.app.exceptions.handlers import ApiError
-from backend.app.services.workflow import execute, operation, require
+from backend.app.services.workflow import execute, operation
 
 router = APIRouter(prefix="/sessions/{session_id}/sources", tags=["sources"])
-
-
-@router.post("/sample", response_model=Result[dict])
-def sample(session: CurrentSession):
-    with operation(session):
-        return {"data": execute(session, 2, s02_connect.connect_sample)}
 
 
 @router.post("/postgres", response_model=Result[dict])
@@ -32,7 +25,6 @@ def postgres(body: PostgresRequest, session: CurrentSession):
 async def upload(request: Request, session: CurrentSession):
     # Parse multipart only after the application middleware has bounded the body.
     # Unlike a bare UploadFile parameter, this also bounds parser file/field counts.
-    require(session, 1)
     limits = UploadLimits.from_settings()
     async with request.form(max_files=limits.max_files, max_fields=0,
                             max_part_size=limits.max_bytes) as form:
@@ -45,7 +37,7 @@ async def upload(request: Request, session: CurrentSession):
             if not name or len(name) > 255 or "/" in name or "\\" in name:
                 raise ApiError(422, "invalid_filename", "Upload filenames must be plain basenames")
             if not name.lower().endswith(ALLOWED_EXTENSIONS):
-                raise ApiError(422, "invalid_file_type", "Only CSV, TSV and text files are supported")
+                raise ApiError(422, "invalid_file_type", "Only CSV files are supported")
             data = await file.read(limits.max_bytes + 1)
             if len(data) > limits.max_bytes:
                 raise ApiError(413, "file_too_large", "A file exceeds the configured upload limit")

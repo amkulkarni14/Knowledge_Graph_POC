@@ -15,7 +15,6 @@ export const scopeApi = {
 export const sourcesApi = {
   read: (id: string, signal?: AbortSignal) =>
     get<JsonObject>(p(id, "/sources"), undefined, signal),
-  sample: (id: string) => send<JsonObject>("POST", p(id, "/sources/sample")),
   postgres: (id: string, body: Schema<"PostgresRequest">) =>
     send<JsonObject>("POST", p(id, "/sources/postgres"), body),
   upload: async (

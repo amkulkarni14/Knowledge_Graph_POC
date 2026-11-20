@@ -2,7 +2,7 @@
 
 Generated from the actual backend OpenAPI 3.1 contract and checked against controllers. All paths below are complete. JSON success types include the `Result` envelope. Binary downloads and 204 are handled separately.
 
-All 58 operations have frontend adapters and UI consumers. 57 are exercised with successful real local HTTP responses across the sample/CSV integration tests and browser lifecycle. PostgreSQL has typed request/response handling and existing backend tests with mocked dependencies; no live PostgreSQL credentials or connection were used.
+The workflow API supports browsing active workspaces, CSV uploads, and PostgreSQL connections. CSV workflows are exercised by the integration tests. PostgreSQL has typed request/response handling and existing backend tests with mocked dependencies; no live PostgreSQL credentials or connection were used.
 
 | Method | Endpoint | Request body | Parameters | Response | Adapter / UI | Status |
 |---|---|---|---|---|---|---|
@@ -14,7 +14,6 @@ All 58 operations have frontend adapters and UI consumers. 57 are exercised with
 | PUT | /api/v1/sessions/{session_id}/scope | application/json: ScopeRequest | path: session_id (required) | 200: Result_dict_ | scopeApi / ScopePage | Implemented; real local HTTP exercised |
 | GET | /api/v1/sessions/{session_id}/scope | None | path: session_id (required) | 200: Result_Union_dict__NoneType__ | scopeApi / ScopePage | Implemented; real local HTTP exercised |
 | GET | /api/v1/sessions/{session_id}/events | None | path: session_id (required); query: offset [minimum=0, default=0]; query: limit [minimum=1, maximum=500, default=100] | 200: Result_Page_dict__ | sessionsApi / AppShell / OverviewPage / BuildPage | Implemented; real local HTTP exercised |
-| POST | /api/v1/sessions/{session_id}/sources/sample | None | path: session_id (required) | 200: Result_dict_ | sourcesApi / SourcesPage | Implemented; real local HTTP exercised |
 | POST | /api/v1/sessions/{session_id}/sources/postgres | application/json: PostgresRequest | path: session_id (required) | 200: Result_dict_ | sourcesApi / SourcesPage | Implemented; mocked connector tests; live unverified |
 | POST | /api/v1/sessions/{session_id}/sources/upload | multipart/form-data: repeated files (binary) | path: session_id (required) | 200: Result_dict_ | sourcesApi / SourcesPage | Implemented; real local HTTP exercised |
 | GET | /api/v1/sessions/{session_id}/sources | None | path: session_id (required) | 200: Result_dict_ | sourcesApi / SourcesPage | Implemented; real local HTTP exercised |

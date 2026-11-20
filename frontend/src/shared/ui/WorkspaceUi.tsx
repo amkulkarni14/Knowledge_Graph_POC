@@ -27,7 +27,7 @@ export function PageHeader({
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   action?: ReactNode;
 }) {
   return (
@@ -35,7 +35,7 @@ export function PageHeader({
       <div>
         <div className="eyebrow">{eyebrow ?? "KNOWLEDGE WORKSPACE"}</div>
         <h1>{title}</h1>
-        <p>{description}</p>
+        {description && <p>{description}</p>}
       </div>
       {action}
     </header>

@@ -39,7 +39,7 @@ class PipelineContext:
     # Stage 1
     scope: Any = None
     # Stage 2
-    source: Any = None                 # DataSource (PostgresSource or SampleSource)
+    source: Any = None                 # DataSource (PostgresSource or CsvSource)
     source_info: dict = field(default_factory=dict)
     # Stage 3-4
     catalog: Any = None                # SchemaCatalog

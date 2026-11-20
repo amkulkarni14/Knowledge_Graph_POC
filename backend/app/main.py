@@ -14,7 +14,7 @@ from backend.app.exceptions.handlers import (
 from backend.app.repositories.sessions import SessionRepository
 from backend.app.repositories.graph_versions import recover_interrupted
 from backend.app.services.builds import BuildRunner
-from backend.app.api import auth, sessions, sources, metadata, ontology, builds, graphs, graph_versions
+from backend.app.api import auth, sessions, sources, metadata, ontology, builds, graphs, graph_versions, library
 
 
 def create_app(config: ApiSettings | None = None):
@@ -62,7 +62,7 @@ def create_app(config: ApiSettings | None = None):
     # /login is the only public route besides /health; everything else requires a valid token.
     app.include_router(auth.router, prefix="/api/v1")
     for router in (sessions.router, sources.router, metadata.router, ontology.router, builds.router,
-                   graphs.router, graph_versions.router):
+                   graphs.router, graph_versions.router, library.router):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
     return app
 

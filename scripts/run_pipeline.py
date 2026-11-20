@@ -1,8 +1,7 @@
 """Run all 16 stages headless (same code the UI calls).
 
-    python scripts/run_pipeline.py                 # in-memory sample data, offline AI fixture
     python scripts/run_pipeline.py --postgres      # PG* settings from env / .env
-    python scripts/run_pipeline.py --use-groq      # real Groq call (needs GROQ_API_KEY)
+    python scripts/run_pipeline.py --postgres --use-groq  # real Groq call (needs GROQ_API_KEY)
     python scripts/run_pipeline.py --csv-dir data/samples/customer360   # every .csv in a folder, ontology drafted by rules
 """
 from __future__ import annotations
@@ -25,15 +24,16 @@ if sys.platform == "win32":
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--postgres", action="store_true")
+    source = ap.add_mutually_exclusive_group(required=True)
+    source.add_argument("--postgres", action="store_true")
     ap.add_argument("--use-groq", action="store_true")
-    ap.add_argument("--csv-dir", help="folder with CSV files: each file becomes a table, the ontology is drafted")
+    source.add_argument("--csv-dir", help="folder with CSV files: each file becomes a table, the ontology is drafted")
     ap.add_argument("--project", default=None, help="project name (default: the folder name)")
     ap.add_argument("--author", default="data.modeller")
     ap.add_argument("--reviewer", default="reviewer.lead")
     args = ap.parse_args()
 
-    csv_files, project = None, args.project or "Uploaded files"
+    csv_files, project = None, args.project or ("PostgreSQL" if args.postgres else "Uploaded files")
     if args.csv_dir:
         try:
             csv_files = read_directory(args.csv_dir)
@@ -49,9 +49,7 @@ def main() -> int:
         print(f"Cannot use the CSV files:\n{e}")
         return 2
     except ValueError as e:
-        if not csv_files:
-            raise
-        print(f"Cannot build a graph from the CSV files:\n{e}")
+        print(f"Cannot build a graph from the source:\n{e}")
         return 2
     for e in ctx.events:
         print(f"[{e['time']}] S{e['stage']:02d} {e['level']:7s} {e['message']}")

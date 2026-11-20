@@ -15,9 +15,9 @@ from backend.app.exceptions.handlers import ApiError
 # Existing pipeline modules use a shared Settings instance. Serialize calls while
 # temporarily selecting session storage, restoring it even when a call fails.
 PIPELINE_LOCK = RLock()
-PREREQUISITES = {1: (), 2: (1,), 3: (1, 2), 4: (3,), 5: (3, 4), 6: (5,),
+PREREQUISITES = {1: (), 2: (), 3: (2, 1), 4: (3,), 5: (3, 4), 6: (5,),
                  7: (5, 6), 8: (7,), 9: (8,), 10: (3, 9), 11: (10,),
-                 12: (11,), 13: (12,), 14: (13,), 15: (14,), 16: (14,)}
+                 12: (11,), 13: (12,), 14: (13,), 15: (14,), 16: (14, 15)}
 RESULTS = {3: {"catalog": None}, 4: {"table_analysis": []}, 5: {"manual_ontology": None},
            6: {"ai_items": [], "ai_meta": {}}, 7: {"hybrid_draft": None},
            8: {"ontology_report": None}, 9: {"approved_ontology": None},
@@ -29,7 +29,8 @@ RESULTS = {3: {"catalog": None}, 4: {"table_analysis": []}, 5: {"manual_ontology
 def require(session, *stages):
     missing = session.ctx.require(*stages)
     if missing is not None:
-        raise ApiError(409, "stage_prerequisite", f"Complete stage {missing} first",
+        prerequisite = {1: "Goal & Scope", 2: "Data Sources"}.get(missing, f"stage {missing}")
+        raise ApiError(409, "stage_prerequisite", f"Complete {prerequisite} first",
                        [{"missing_stage": missing}])
 
 

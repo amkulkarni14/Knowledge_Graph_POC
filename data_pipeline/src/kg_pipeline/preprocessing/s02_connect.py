@@ -1,11 +1,10 @@
-"""Stage 2 - Connect to PostgreSQL safely.
+"""Connect to CSV files or PostgreSQL.
 
 What : open a READ-ONLY connection (ideally to a read replica) with a statement timeout.
 Why  : the pipeline must never change business data or slow down live applications.
 Out  : ctx.source (a DataSource) + ctx.source_info (server, user, read-only flag).
 
-Three modes:
-  * sample   - in-memory copy of database/postgres/init/01_source_schema.sql (no database needed)
+Sources:
   * csv      - several uploaded CSV files; each file is a table, keys and links between the
                files are inferred (see kg/sources/csv_source.py). Held in memory only.
   * postgres - real database; credentials come from env/.env or the UI form and are
@@ -21,7 +20,6 @@ from kg_pipeline.core.context import PipelineContext
 from kg_pipeline.preprocessing.connectors.csv_source import CsvUpload
 from kg_pipeline.preprocessing.connectors.csv_source import UploadLimits
 from kg_pipeline.preprocessing.connectors.csv_source import build_csv_source
-from kg_pipeline.preprocessing.connectors.sample_source import SampleSource
 
 
 def env_defaults() -> dict:
@@ -46,15 +44,6 @@ def _replace_source(ctx: PipelineContext, source) -> None:
     ctx.clear_results_from_schema()
     ctx.source_version += 1
     ctx.source = source
-
-
-def connect_sample(ctx: PipelineContext) -> dict:
-    src = SampleSource()
-    _replace_source(ctx, src)
-    ctx.source_info = {"mode": "sample", "name": src.name, **src.ping()}
-    ctx.log(2, "Connected to the in-memory sample database (6 retail tables)")
-    ctx.mark_done(2)
-    return ctx.source_info
 
 
 def connect_csv(ctx: PipelineContext, uploads: Sequence[CsvUpload], limits: UploadLimits | None = None) -> dict:

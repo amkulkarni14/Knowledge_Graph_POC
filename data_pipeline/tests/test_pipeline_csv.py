@@ -214,17 +214,17 @@ class TestConnectStage:
     def test_a_rejected_upload_leaves_the_previous_connection_and_results_untouched(self):
         ctx = PipelineContext()
         s01_scope.run(ctx, s01_scope.default_scope())
-        s02_connect.connect_sample(ctx)
-        sample = ctx.source
+        s02_connect.connect_csv(ctx, [csv_file("existing.csv", "id\n1\n")])
+        existing = ctx.source
         with pytest.raises(CsvImportError, match="empty.csv"):
             s02_connect.connect_csv(ctx, [csv_file("good.csv", "id\n1\n"), csv_file("empty.csv", "")])
-        assert ctx.source is sample and ctx.source_info["mode"] == "sample" and ctx.is_done(2)
+        assert ctx.source is existing and ctx.source_info["mode"] == "csv" and ctx.is_done(2)
 
     def test_connecting_a_new_source_drops_everything_built_from_the_old_one(self):
-        ctx = run_all(PipelineContext())                      # built-in sample, all 16 stages
+        ctx = run_csv(read_directory(SAMPLE_FILES_DIR / "customer360"))
         version = ctx.source_version
         assert ctx.graph is not None and ctx.approved_ontology is not None
-        s02_connect.connect_csv(ctx, read_directory(SAMPLE_FILES_DIR / "customer360"))
+        s02_connect.connect_csv(ctx, [csv_file("replacement.csv", "id\n1\n")])
         assert ctx.completed == {1, 2} and ctx.source_version == version + 1
         for attr in ("catalog", "manual_ontology", "hybrid_draft", "approved_ontology", "build_plan", "extraction",
                      "dq_report", "clean", "graph", "graph_report", "snapshot", "ontology_report"):
@@ -257,10 +257,9 @@ class TestConnectStage:
         s02_connect.connect_csv(ctx, [csv_file("a.csv", "Cust ID\nC1\n")])
         s03_schema_extraction.run(ctx)
         assert s03_schema_extraction.column_rows(ctx.catalog, "csv.a")[0]["file header"] == "Cust ID"
-        sample = PipelineContext()
-        s02_connect.connect_sample(sample)
-        s03_schema_extraction.run(sample)
-        assert "file header" not in s03_schema_extraction.column_rows(sample.catalog, "public.customers")[0]
+        column = ctx.catalog.tables["csv.a"].columns["cust_id"]
+        column.source_header = ""
+        assert "file header" not in s03_schema_extraction.column_rows(ctx.catalog, "csv.a")[0]
 
 
 class TestAiStageWithFiles:
@@ -299,19 +298,9 @@ class TestStage5Draft:
         Ontology(ontology_id=oid, namespace=namespace, name=name)
 
 
-# --------------------------------------------------------------------------- unchanged behaviour
-class TestBuiltInSampleStillWorks:
-    def test_sample_pipeline_numbers_are_unchanged(self):
-        ctx = run_all(PipelineContext())
-        assert (ctx.graph.number_of_nodes(), ctx.graph.number_of_edges()) == (33, 52)
-        assert ctx.graph_report["ok"] and ctx.snapshot["published"]
-        reasons = [q["reason"] for q in ctx.build_stats["quarantine"]]
-        assert any("business rule" in r for r in reasons) and any("target node missing" in r or "source node missing" in r
-                                                                  for r in reasons)
-
-    def test_sample_ai_step_still_uses_the_offline_fixture(self):
-        ctx = run_all(PipelineContext())
-        assert ctx.ai_meta["model"] == "offline-fixture"
+def test_pipeline_requires_an_explicit_source():
+    with pytest.raises(ValueError, match="Choose either CSV files or a PostgreSQL connection"):
+        run_all(PipelineContext())
 
 
 # --------------------------------------------------------------------------- command line

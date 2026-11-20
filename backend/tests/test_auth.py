@@ -50,7 +50,7 @@ def test_missing_hash_disables_login(tmp_path):
 
 def test_protected_routes_require_token(anon):
     assert anon.get("/api/v1/health").status_code == 200
-    for method, path in (("get", "/api/v1/stages"), ("post", "/api/v1/sessions"),
+    for method, path in (("get", "/api/v1/stages"), ("post", "/api/v1/sessions"), ("get", "/api/v1/sessions"),
                          ("get", "/api/v1/me"), ("post", "/api/v1/logout")):
         response = getattr(anon, method)(path)
         assert response.status_code == 401, path

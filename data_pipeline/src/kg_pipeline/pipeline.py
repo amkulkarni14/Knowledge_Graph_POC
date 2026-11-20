@@ -1,4 +1,4 @@
-"""Runs all 16 stages in order with default decisions (used by the CLI and the UI 'quick run')."""
+"""Run the workflow against an explicit CSV or PostgreSQL source."""
 from __future__ import annotations
 
 from typing import Sequence
@@ -25,44 +25,38 @@ from kg_pipeline.graph_builder.loaders import s16_graph_persistence
 
 def run_all(ctx: PipelineContext, postgres: dict | None = None, use_groq: bool = False,
             author: str = "data.modeller", reviewer: str = "reviewer.lead",
-            csv_files: Sequence[CsvUpload] | None = None, project: str = "Uploaded files") -> PipelineContext:
-    """`csv_files`: run on uploaded CSV files. The ontology is then DRAFTED from the files by rules (Stage 5);
-    the AI step runs only when `use_groq` (the recorded offline answer only fits the sample database)."""
+            csv_files: Sequence[CsvUpload] | None = None, project: str | None = None) -> PipelineContext:
+    if bool(csv_files) == bool(postgres):
+        raise ValueError("Choose either CSV files or a PostgreSQL connection.")
     if csv_files:
-        s01_scope.run(ctx, s01_scope.scope_for_files(project, [f.filename for f in csv_files]))
+        project = project or "Uploaded files"
         s02_connect.connect_csv(ctx, csv_files)
+        scope = s01_scope.scope_for_source(project, [f.filename for f in csv_files])
     else:
-        s01_scope.run(ctx, s01_scope.default_scope())
-        if postgres:
-            s02_connect.connect_postgres(ctx, **postgres)
-        else:
-            s02_connect.connect_sample(ctx)
+        project = project or "PostgreSQL"
+        s02_connect.connect_postgres(ctx, **postgres)
+        scope = s01_scope.scope_for_source(project)
+    s01_scope.run(ctx, scope)
+    ctx.mark_done(2)
     s03_schema_extraction.run(ctx)
     s04_schema_analysis.run(ctx)
 
-    acyclic: list[str] = ["Customer-[REFERRED]->Customer"]
-    if csv_files:
-        draft = s05_manual_ontology.draft_from_schema(ctx, *s05_manual_ontology.default_ids(project), author=author)
-        if not draft.ontology.classes:
-            problems = [*(ctx.source_info.get("warnings") or []), *draft.notes]
-            raise ValueError("Nothing can be built from these files: no table has a column that identifies its rows.\n"
-                             + "\n".join(f"- {p}" for p in problems))
-        s05_manual_ontology.run(ctx, draft.ontology)
-        for note in draft.notes:
-            ctx.log(5, note, "warning")
-        acyclic = []
-    else:
-        s05_manual_ontology.run(ctx, s05_manual_ontology.load_template())
-
-    if csv_files and not use_groq:
-        s06_ai_suggestions.skip(ctx)
-        decisions: dict[str, dict] = {}
-    else:
-        items = s06_ai_suggestions.run(ctx, actor=author, use_groq=use_groq, include_samples=True)
-        # demo policy: accept valid + needs_review, reject invalid (a human does this in the UI)
+    draft = s05_manual_ontology.draft_from_schema(ctx, *s05_manual_ontology.default_ids(project), author=author)
+    if not draft.ontology.classes:
+        problems = [*(ctx.source_info.get("warnings") or []), *draft.notes]
+        raise ValueError("Nothing can be built from this source: no table has a column that identifies its rows.\n"
+                         + "\n".join(f"- {p}" for p in problems))
+    s05_manual_ontology.run(ctx, draft.ontology)
+    for note in draft.notes:
+        ctx.log(5, note, "warning")
+    if use_groq:
+        items = s06_ai_suggestions.run(ctx, actor=author, use_groq=True, include_samples=True)
         decisions = {i.item_id: {"action": "approve" if i.status in ("valid", "needs_review") else "reject"}
                      for i in items if i.kind != "duplicate"}
-    s07_review_approval.run(ctx, decisions, actor=author, acyclic_relationships=acyclic)
+    else:
+        s06_ai_suggestions.skip(ctx)
+        decisions = {}
+    s07_review_approval.run(ctx, decisions, actor=author)
     if not s08_ontology_validation.run(ctx).ok:
         return ctx
     s09_ontology_repository.run(ctx, author=author, reviewer=reviewer)

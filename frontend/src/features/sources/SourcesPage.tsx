@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import {
   Button,
@@ -8,7 +9,7 @@ import {
   LinearProgress,
   Alert,
 } from "@mui/material";
-import { Database, Upload, FlaskConical } from "lucide-react";
+import { Database, Upload } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { sourcesApi } from "../../api/workflowApi";
 import {
@@ -23,7 +24,7 @@ import {
   Report,
 } from "../../shared/ui/WorkspaceUi";
 import type { Schema } from "../../types/common.types";
-function PostgresForm({ enabled }: { enabled: boolean }) {
+function PostgresForm() {
   const {
     register,
     handleSubmit,
@@ -121,7 +122,7 @@ function PostgresForm({ enabled }: { enabled: boolean }) {
       <Button
         type="submit"
         variant="contained"
-        disabled={!enabled || connect.isPending}
+        disabled={connect.isPending}
       >
         Connect to PostgreSQL
       </Button>
@@ -130,12 +131,11 @@ function PostgresForm({ enabled }: { enabled: boolean }) {
   );
 }
 export default function SourcesPage() {
-  const { id, can } = useWorkspace();
+  const { id, done } = useWorkspace();
   const [mode, setMode] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
   const source = useData(["sources"], (signal) => sourcesApi.read(id, signal));
-  const sample = useAction((sid) => sourcesApi.sample(sid));
   const upload = useAction(async (sid) => {
     try {
       return await sourcesApi.upload(sid, files, setProgress);
@@ -143,19 +143,14 @@ export default function SourcesPage() {
       setFiles([]);
     }
   });
-  const valid = files.every((f) => /\.(csv|tsv|txt)$/i.test(f.name));
+  const valid = files.every((f) => /\.csv$/i.test(f.name));
   return (
     <>
       <PageHeader
         eyebrow="Data & Metadata"
-        title="Connect your data"
-        description="Use the built-in retail sample, upload related files, or connect a read-only PostgreSQL source."
+        title="Data Sources"
+        description="Upload CSV files or connect to a read-only PostgreSQL database."
       />
-      {!can(2) && (
-        <Alert severity="info" className="mb-4">
-          Save your project scope before connecting a source.
-        </Alert>
-      )}
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-5">
         <Panel title="Source connection">
           <Tabs
@@ -165,12 +160,7 @@ export default function SourcesPage() {
             className="mb-6"
           >
             <Tab
-              label="Sample"
-              icon={<FlaskConical size={16} />}
-              iconPosition="start"
-            />
-            <Tab
-              label="Upload files"
+              label="CSV upload"
               icon={<Upload size={16} />}
               iconPosition="start"
             />
@@ -182,26 +172,8 @@ export default function SourcesPage() {
           </Tabs>
           {mode === 0 && (
             <div className="form-stack">
-              <h3>Retail demonstration dataset</h3>
               <p className="muted">
-                A built-in dataset with customers, orders, products, and
-                deliberate data-quality issues. Compatible with the retail
-                ontology template and offline AI fixture.
-              </p>
-              <Button
-                variant="contained"
-                disabled={!can(2) || sample.isPending}
-                onClick={() => sample.mutate()}
-              >
-                Connect retail sample
-              </Button>
-              <Feedback pending={sample.isPending} error={sample.error} />
-            </div>
-          )}
-          {mode === 1 && (
-            <div className="form-stack">
-              <p className="muted">
-                Each CSV, TSV, or text file becomes a table. The backend infers
+                Each CSV file becomes a table. The backend infers
                 keys and relationships. Upload related files together.
               </p>
               <Button component="label" variant="outlined">
@@ -209,7 +181,7 @@ export default function SourcesPage() {
                 <input
                   aria-label="Choose source files"
                   type="file"
-                  accept=".csv,.tsv,.txt"
+                  accept=".csv"
                   multiple
                   hidden
                   onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
@@ -221,12 +193,12 @@ export default function SourcesPage() {
                 </p>
               ))}
               {!valid && (
-                <Alert severity="error">Select CSV, TSV, or text files.</Alert>
+                <Alert severity="error">Select CSV files.</Alert>
               )}
               <Button
                 variant="contained"
                 disabled={
-                  !can(2) || !files.length || !valid || upload.isPending
+                  !files.length || !valid || upload.isPending
                 }
                 onClick={() => upload.mutate()}
               >
@@ -243,11 +215,16 @@ export default function SourcesPage() {
               <Feedback error={upload.error} />
             </div>
           )}
-          {mode === 2 && <PostgresForm enabled={can(2)} />}
+          {mode === 1 && <PostgresForm />}
         </Panel>
         <Panel title="Connected source">
           <Feedback pending={source.isFetching} error={source.error} />
           <Report value={source.data} />
+          {done.includes(2) && !done.includes(1) && (
+            <Button component={Link} to="/scope" variant="outlined">
+              Continue to Goal &amp; Scope
+            </Button>
+          )}
         </Panel>
       </div>
     </>

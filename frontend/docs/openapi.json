@@ -123,6 +123,25 @@
       }
     },
     "/api/v1/sessions": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_api_v1_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_list_SessionView__"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "sessions"
@@ -383,49 +402,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Result_Page_dict__"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/sessions/{session_id}/sources/sample": {
-      "post": {
-        "tags": [
-          "sources"
-        ],
-        "summary": "Sample",
-        "operationId": "sample_api_v1_sessions__session_id__sources_sample_post",
-        "parameters": [
-          {
-            "name": "session_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Session Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Result_dict_"
                 }
               }
             }
@@ -5321,6 +5297,87 @@
           }
         }
       }
+    },
+    "/api/v1/domains": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Domains",
+        "operationId": "domains_api_v1_domains_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_list_SavedDomain__"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Create Domain",
+        "operationId": "create_domain_api_v1_domains_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_SavedDomain_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ontologies": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Ontologies",
+        "operationId": "ontologies_api_v1_ontologies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_list_SavedOntology__"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5335,8 +5392,9 @@
           },
           "use_groq": {
             "type": "boolean",
+            "const": true,
             "title": "Use Groq",
-            "default": false
+            "default": true
           },
           "include_samples": {
             "type": "boolean",
@@ -5594,7 +5652,7 @@
           },
           "version": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Version",
             "default": 1
           },
@@ -5988,8 +6046,8 @@
         "properties": {
           "batch_size": {
             "type": "integer",
-            "maximum": 100000,
-            "minimum": 1,
+            "maximum": 100000.0,
+            "minimum": 1.0,
             "title": "Batch Size",
             "default": 5000
           },
@@ -6222,13 +6280,100 @@
         ],
         "title": "Decision"
       },
+      "DomainRequest": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project"
+          },
+          "business_questions": {
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Business Questions"
+          },
+          "scope_notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Scope Notes",
+            "default": ""
+          },
+          "columns_in_scope": {
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}$"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Columns In Scope"
+          },
+          "tables_in_scope": {
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}$"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Tables In Scope"
+          },
+          "sensitive_columns": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Sensitive Columns"
+          },
+          "users": {
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Users"
+          },
+          "later_list": {
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Later List"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project",
+          "business_questions",
+          "name"
+        ],
+        "title": "DomainRequest"
+      },
       "DraftRequest": {
         "properties": {
           "mode": {
             "type": "string",
             "enum": [
               "new",
-              "template",
               "schema"
             ],
             "title": "Mode"
@@ -6237,21 +6382,21 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$",
             "title": "Ontology Id",
-            "default": "retail"
+            "default": "knowledge-graph"
           },
           "namespace": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
             "title": "Namespace",
-            "default": "com.example.retail"
+            "default": "com.example.knowledge-graph"
           },
           "name": {
             "type": "string",
             "maxLength": 200,
             "minLength": 1,
             "title": "Name",
-            "default": "Retail Knowledge Graph"
+            "default": "Knowledge Graph"
           },
           "author": {
             "type": "string",
@@ -6559,6 +6704,44 @@
         ],
         "title": "OntologyStatus"
       },
+      "OntologySummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "classes": {
+            "type": "integer",
+            "title": "Classes"
+          },
+          "relationships": {
+            "type": "integer",
+            "title": "Relationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "version",
+          "status",
+          "classes",
+          "relationships"
+        ],
+        "title": "OntologySummary"
+      },
       "Origin": {
         "type": "string",
         "enum": [
@@ -6609,8 +6792,8 @@
           },
           "port": {
             "type": "integer",
-            "maximum": 65535,
-            "minimum": 1,
+            "maximum": 65535.0,
+            "minimum": 1.0,
             "title": "Port",
             "default": 5432
           },
@@ -6876,6 +7059,18 @@
         ],
         "title": "Result[Page[dict]]"
       },
+      "Result_SavedDomain_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SavedDomain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[SavedDomain]"
+      },
       "Result_SchemaCatalog_": {
         "properties": {
           "data": {
@@ -6950,6 +7145,54 @@
           "data"
         ],
         "title": "Result[list[ReviewItem]]"
+      },
+      "Result_list_SavedDomain__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SavedDomain"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[list[SavedDomain]]"
+      },
+      "Result_list_SavedOntology__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SavedOntology"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[list[SavedOntology]]"
+      },
+      "Result_list_SessionView__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SessionView"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[list[SessionView]]"
       },
       "Result_list_dict__": {
         "properties": {
@@ -7122,6 +7365,172 @@
         ],
         "title": "Rule"
       },
+      "SavedDomain": {
+        "properties": {
+          "project": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project"
+          },
+          "business_questions": {
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Business Questions"
+          },
+          "scope_notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Scope Notes",
+            "default": ""
+          },
+          "columns_in_scope": {
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}$"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Columns In Scope"
+          },
+          "tables_in_scope": {
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}$"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Tables In Scope"
+          },
+          "sensitive_columns": {
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Sensitive Columns"
+          },
+          "users": {
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Users"
+          },
+          "later_list": {
+            "items": {
+              "type": "string",
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Later List"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project",
+          "business_questions",
+          "name",
+          "id"
+        ],
+        "title": "SavedDomain"
+      },
+      "SavedOntology": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workspace Id"
+          },
+          "workspace_name": {
+            "type": "string",
+            "title": "Workspace Name"
+          },
+          "ontology_id": {
+            "type": "string",
+            "title": "Ontology Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/SavedOntologyVersion"
+            },
+            "type": "array",
+            "title": "Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "workspace_name",
+          "ontology_id",
+          "name",
+          "versions"
+        ],
+        "title": "SavedOntology"
+      },
+      "SavedOntologyVersion": {
+        "properties": {
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "classes": {
+            "type": "integer",
+            "title": "Classes"
+          },
+          "relationships": {
+            "type": "integer",
+            "title": "Relationships"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "status",
+          "classes",
+          "relationships"
+        ],
+        "title": "SavedOntologyVersion"
+      },
       "SchemaCatalog": {
         "properties": {
           "tables": {
@@ -7166,6 +7575,21 @@
             "maxItems": 100,
             "minItems": 1,
             "title": "Business Questions"
+          },
+          "scope_notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Scope Notes",
+            "default": ""
+          },
+          "columns_in_scope": {
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}\\.[A-Za-z_][A-Za-z0-9_]{0,62}$"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Columns In Scope"
           },
           "tables_in_scope": {
             "items": {
@@ -7267,6 +7691,9 @@
           "expires_in_seconds": {
             "type": "integer",
             "title": "Expires In Seconds"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/WorkspaceSummary"
           }
         },
         "type": "object",
@@ -7466,8 +7893,8 @@
           },
           "hops": {
             "type": "integer",
-            "maximum": 2,
-            "minimum": 1,
+            "maximum": 2.0,
+            "minimum": 1.0,
             "title": "Hops",
             "default": 1
           },
@@ -7509,6 +7936,89 @@
           "kind"
         ],
         "title": "WorkspaceItem"
+      },
+      "WorkspaceSummary": {
+        "properties": {
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "source_files": {
+            "type": "integer",
+            "title": "Source Files",
+            "default": 0
+          },
+          "tables": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tables"
+          },
+          "table_types": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Table Types"
+          },
+          "nodes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nodes"
+          },
+          "edges": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edges"
+          },
+          "ontology": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OntologySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceSummary"
       }
     }
   }

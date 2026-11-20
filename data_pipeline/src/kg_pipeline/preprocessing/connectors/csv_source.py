@@ -35,7 +35,7 @@ from kg_pipeline.core.schema_models import TableInfo
 from kg_pipeline.preprocessing.connectors.sample_source import SampleSource
 
 SCHEMA = "csv"
-ALLOWED_EXTENSIONS = (".csv", ".tsv", ".txt")
+ALLOWED_EXTENSIONS = (".csv",)
 
 NULL_TOKENS = frozenset({"", "null", "none", "nan", "n/a"})
 _DELIMITERS = (",", ";", "\t", "|")

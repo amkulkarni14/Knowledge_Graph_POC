@@ -1,0 +1,40 @@
+import {
+  Network,
+  Compass,
+  Database,
+  ScanSearch,
+  ChartNoAxesCombined,
+  Shapes,
+  Sparkles,
+  ClipboardCheck,
+  BadgeCheck,
+  History,
+  ListChecks,
+  Rows3,
+  ShieldCheck,
+  Workflow,
+  HardDrive,
+  type LucideIcon,
+} from "lucide-react";
+
+export const stageNavigation: Record<
+  number,
+  { title: string; icon: LucideIcon }
+> = {
+  1: { title: "Goal & Scope", icon: Compass },
+  2: { title: "Data Sources", icon: Database },
+  3: { title: "Schema Extraction", icon: ScanSearch },
+  4: { title: "Schema Analysis", icon: ChartNoAxesCombined },
+  5: { title: "Ontology Studio", icon: Shapes },
+  6: { title: "AI Suggestions", icon: Sparkles },
+  7: { title: "Review & Approval", icon: ClipboardCheck },
+  8: { title: "Ontology Validation", icon: BadgeCheck },
+  9: { title: "Ontology Versioning", icon: History },
+  10: { title: "Build Plan", icon: ListChecks },
+  11: { title: "Data Extraction", icon: Rows3 },
+  12: { title: "Data Quality", icon: ShieldCheck },
+  13: { title: "Cleaning & Entity Resolution", icon: Workflow },
+  14: { title: "Graph Construction", icon: Network },
+  15: { title: "Graph Validation", icon: BadgeCheck },
+  16: { title: "Storage & Snapshots", icon: HardDrive },
+};

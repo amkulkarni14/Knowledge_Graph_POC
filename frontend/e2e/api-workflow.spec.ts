@@ -1,5 +1,20 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-const base = "http://127.0.0.1:8000/api/v1";
+import { readFileSync } from "node:fs";
+import { workflowCredentials } from "./workflow-fixtures";
+const base = `http://127.0.0.1:${process.env.KG_E2E_BACKEND_PORT ?? "8000"}/api/v1`;
+
+test.use({
+  extraHTTPHeaders: async ({ playwright }, use) => {
+    const auth = await playwright.request.newContext();
+    const response = await auth.post(`${base}/login`, {
+      data: workflowCredentials,
+    });
+    expect(response.ok()).toBeTruthy();
+    const { access_token } = await response.json();
+    await auth.dispose();
+    await use({ Authorization: `Bearer ${access_token}` });
+  },
+});
 async function create(request: APIRequestContext) {
   const r = await request.post(`${base}/sessions`, {
     data: { name: "HTTP contract verification" },
@@ -16,7 +31,7 @@ async function data(request: APIRequestContext, path: string, body?: unknown) {
   expect(r.ok(), await r.text()).toBeTruthy();
   return (await r.json()).data;
 }
-test("real API sample contracts: editor, offline suggestions, versioning, build reports, graph and binary snapshots", async ({
+test("real API CSV contracts: editor, review, versioning, build reports, graph and binary snapshots", async ({
   request,
 }) => {
   const p = await create(request);
@@ -25,13 +40,35 @@ test("real API sample contracts: editor, offline suggestions, versioning, build 
       (
         await request.put(`${p}/scope`, {
           data: {
-            project: "Retail",
-            business_questions: ["Which customers place orders?"],
+            project: "Customer 360",
+            business_questions: ["How are accounts linked to customers?"],
           },
         })
       ).ok(),
     ).toBeTruthy();
-    await data(request, `${p}/sources/sample`, {});
+    const uploads = new FormData();
+    for (const table of [
+      "accounts",
+      "banks",
+      "credit_enquiry",
+      "credit_score",
+      "customers",
+      "loans",
+      "payments",
+    ]) {
+      const name = `${table}.csv`;
+      uploads.append(
+        "files",
+        new File(
+          [new Uint8Array(readFileSync(`../data/samples/customer360/${name}`))],
+          name,
+          { type: "text/csv" },
+        ),
+      );
+    }
+    expect(
+      (await request.post(`${p}/sources/upload`, { multipart: uploads })).ok(),
+    ).toBeTruthy();
     await data(request, `${p}/metadata/extract`, {});
     await data(request, `${p}/metadata/analyze`, {});
     for (const route of [
@@ -39,12 +76,12 @@ test("real API sample contracts: editor, offline suggestions, versioning, build 
       "/metadata",
       "/metadata/tables",
       "/metadata/analysis",
-      "/metadata/columns?table=public.customers",
-      "/metadata/preview?table=public.customers&limit=2",
+      "/metadata/columns?table=csv.customers",
+      "/metadata/preview?table=csv.customers&limit=2",
     ])
       await data(request, p + route);
     const initialized = await data(request, `${p}/ontology/draft`, {
-      mode: "template",
+      mode: "schema",
     });
     const ontology = initialized.ontology;
     expect(
@@ -84,26 +121,9 @@ test("real API sample contracts: editor, offline suggestions, versioning, build 
     await data(request, `${p}/ontology/draft/save`, {});
     await data(request, `${p}/ontology/draft/revert`, {});
     await data(request, `${p}/ontology/draft/save`, {});
-    const suggestions = await data(request, `${p}/ontology/suggestions`, {
-      actor: "data.modeller",
-      use_groq: false,
-      include_samples: false,
-    });
-    expect(suggestions.length).toBeGreaterThan(0);
+    await data(request, `${p}/ontology/suggestions/skip`, {});
     await data(request, `${p}/ontology/suggestions`);
-    const decisions = Object.fromEntries(
-      suggestions
-        .filter((i: { kind: string }) => i.kind !== "duplicate")
-        .map((i: { item_id: string; status: string }) => [
-          i.item_id,
-          { action: i.status === "invalid" ? "reject" : "approve" },
-        ]),
-    );
-    const review = {
-      actor: "data.modeller",
-      decisions,
-      acyclic_relationships: ["Customer-[REFERRED]->Customer"],
-    };
+    const review = { actor: "data.modeller" };
     await data(request, `${p}/ontology/review/preview`, review);
     await data(request, `${p}/ontology/review`, review);
     expect((await data(request, `${p}/ontology/validate`, {})).ok).toBe(true);
@@ -112,26 +132,26 @@ test("real API sample contracts: editor, offline suggestions, versioning, build 
       author: "data.modeller",
       reviewer: "reviewer.lead",
     });
-    await data(request, `${p}/ontology/versions?ontology_id=retail`);
-    await data(request, `${p}/ontology/versions/1?ontology_id=retail`);
-    await data(request, `${p}/ontology/audit?ontology_id=retail`);
+    await data(request, `${p}/ontology/versions?ontology_id=knowledge-graph`);
+    await data(request, `${p}/ontology/versions/1?ontology_id=knowledge-graph`);
+    await data(request, `${p}/ontology/audit?ontology_id=knowledge-graph`);
     for (let stage = 10; stage <= 15; stage++) {
       await data(request, `${p}/builds/stages/${stage}`, {});
       await data(request, `${p}/builds/stages/${stage}`);
     }
     await data(
       request,
-      `${p}/builds/extracted-rows?table=public.customers&limit=2`,
+      `${p}/builds/extracted-rows?table=csv.customers&limit=2`,
     );
     for (const kind of ["merges", "changes", "quarantine", "records"])
       await data(request, `${p}/builds/cleaning/${kind}?limit=2`);
     const graph = await data(
       request,
-      `${p}/graphs/data?limit=50&edge_limit=100&labels=Customer&labels=Order`,
+      `${p}/graphs/data?limit=50&edge_limit=100`,
     );
     expect(graph.nodes.length).toBeGreaterThan(0);
     const node = graph.edges[0].source;
-    const pathTarget=graph.edges[0].target;
+    const pathTarget = graph.edges[0].target;
     await data(request, `${p}/graphs/nodes?offset=0&limit=2`);
     await data(request, `${p}/graphs/node?node_id=${encodeURIComponent(node)}`);
     expect(
@@ -169,15 +189,19 @@ test("real API sample contracts: editor, offline suggestions, versioning, build 
     }
     await data(
       request,
-      `${p}/graphs/data?ontology_id=retail&build_id=${snapshot.build_id}`,
+      `${p}/graphs/data?ontology_id=knowledge-graph&build_id=${snapshot.build_id}`,
     );
     await data(request, `${p}/events?offset=0&limit=5`);
     await data(
       request,
-      `${p}/ontology/versions/1/rollback?ontology_id=retail`,
+      `${p}/ontology/versions/1/rollback?ontology_id=knowledge-graph`,
       { actor: "rollback.modeller" },
     );
-    await data(request, `${p}/ontology/use-approved?ontology_id=retail`, {});
+    await data(
+      request,
+      `${p}/ontology/use-approved?ontology_id=knowledge-graph`,
+      {},
+    );
     await data(request, `${p}/builds`, { batch_size: 2 });
     await expect
       .poll(

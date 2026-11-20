@@ -74,12 +74,14 @@ def event(db, project, version, actor, action):
 
 def list_projects(db, actor):
     return db.execute("""
-        SELECT project_id, name, current_build_id FROM kg_meta.graph_project
-        WHERE owner_name = %s OR project_id IN (
+        SELECT p.project_id, p.name, p.current_build_id, b.ontology_id, b.ontology_version
+        FROM kg_meta.graph_project p
+        LEFT JOIN kg_meta.graph_build b ON b.build_id = p.current_build_id
+        WHERE p.owner_name = %s OR p.project_id IN (
             SELECT m.project_id FROM kg_meta.graph_project_member m
             JOIN kg_meta.app_user u ON u.username = m.username AND u.active WHERE m.username = %s
         )
-        ORDER BY name, project_id
+        ORDER BY p.name, p.project_id
         """, (actor, actor)).fetchall()
 
 

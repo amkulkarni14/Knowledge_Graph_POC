@@ -8,6 +8,7 @@ import { authApi } from "./api/authApi";
 import { LoginPage } from "./features/auth/LoginPage";
 import { Feedback } from "./shared/ui/WorkspaceUi";
 const Overview = lazy(() => import("./features/overview/OverviewPage"));
+const Domains = lazy(() => import("./features/projects/DomainsPage"));
 const Scope = lazy(() => import("./features/projects/ScopePage"));
 const Sources = lazy(() => import("./features/sources/SourcesPage"));
 const Metadata = lazy(() => import("./features/sources/MetadataPage"));
@@ -53,6 +54,7 @@ function Workspace() {
       <Suspense fallback={<Feedback pending />}>
         <Routes>
           <Route path="/" element={<Overview />} />
+          <Route path="/domains" element={<Domains />} />
           <Route path="/published-graphs" element={<PublishedGraphs />} />
           {id && (
             <>

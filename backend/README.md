@@ -47,39 +47,43 @@ Set optional variables in the shell before starting the server. Existing environ
 
 ApiSettings also controls the aggregate request limit (64 MiB), session TTL (3600 seconds), session capacity (100) and accepted background jobs (2). Pipeline calls serialize while temporarily selecting session-specific storage, restoring the original setting on success or failure. Distributed workers require durable session/job state and removal of the shared pipeline Settings dependency.
 
-The aggregate request limit is independent of per-file limits. Only CSV/TSV/text uploads are supported. The framework may spool multipart files temporarily after the aggregate limit check; they are closed after parsing. The source connector holds parsed data in memory.
+The aggregate request limit is independent of per-file limits. Only CSV uploads are supported. The framework may spool multipart files temporarily after the aggregate limit check; they are closed after parsing. The source connector holds parsed data in memory.
 
 Passwords are accepted only for server-side source connections and excluded from API responses/errors. Groq and Neo4j credentials stay in the server environment. Never put credentials in VITE_ variables.
 
-## Minimal sample workflow
+`GET /domains` and `POST /domains` list and create reusable scope templates for the signed-in account. `GET /ontologies` lists saved working drafts and numbered ontology versions for account-owned workspaces. The ownership catalog and ontology artifacts live under `KG_API_STORAGE_DIR`. Session folders created before ownership tracking lack a recorded owner and are excluded from the library.
+
+## Minimal CSV workflow
 
 ~~~powershell
 $base = "http://127.0.0.1:8000/api/v1"
-$created = Invoke-RestMethod -Method Post -Uri "$base/sessions" -ContentType "application/json" -Body '{"name":"Retail demo"}'
+$token = (Invoke-RestMethod -Method Post -Uri "$base/login" -ContentType "application/json" -Body (@{username=$env:KG_API_USER;password=$env:KG_API_PASSWORD} | ConvertTo-Json)).access_token
+$headers = @{Authorization="Bearer $token"}
+$created = Invoke-RestMethod -Headers $headers -Method Post -Uri "$base/sessions" -ContentType "application/json" -Body '{"name":"Customer workspace"}'
 $sid = $created.data.id
 $p = "$base/sessions/$sid"
 
-Invoke-RestMethod -Method Put -Uri "$p/scope" -ContentType "application/json" -Body '{"project":"Retail","business_questions":["How are customers connected to orders?"]}'
-Invoke-RestMethod -Method Post -Uri "$p/sources/sample"
-Invoke-RestMethod -Method Post -Uri "$p/metadata/extract"
-Invoke-RestMethod -Method Post -Uri "$p/metadata/analyze"
-Invoke-RestMethod -Method Post -Uri "$p/ontology/draft" -ContentType "application/json" -Body '{"mode":"template"}'
-Invoke-RestMethod -Method Post -Uri "$p/ontology/draft/save"
-Invoke-RestMethod -Method Post -Uri "$p/ontology/suggestions/skip"
-Invoke-RestMethod -Method Post -Uri "$p/ontology/review" -ContentType "application/json" -Body '{"actor":"data.modeller"}'
-Invoke-RestMethod -Method Post -Uri "$p/ontology/validate"
-Invoke-RestMethod -Method Post -Uri "$p/ontology/approve" -ContentType "application/json" -Body '{"author":"data.modeller","reviewer":"reviewer.lead"}'
-Invoke-RestMethod -Method Post -Uri "$p/builds" -ContentType "application/json" -Body '{}'
-Invoke-RestMethod -Uri "$p/builds/status"
+curl.exe --fail-with-body -H "Authorization: Bearer $token" -F "files=@customers.csv" -F "files=@accounts.csv" "$p/sources/upload"
+Invoke-RestMethod -Headers $headers -Method Put -Uri "$p/scope" -ContentType "application/json" -Body '{"project":"Customer workspace","business_questions":["How are customers connected to accounts?"]}'
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/metadata/extract"
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/metadata/analyze"
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/ontology/draft" -ContentType "application/json" -Body '{"mode":"schema"}'
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/ontology/draft/save"
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/ontology/suggestions/skip"
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/ontology/review" -ContentType "application/json" -Body '{"actor":"data.modeller"}'
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/ontology/validate"
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/ontology/approve" -ContentType "application/json" -Body '{"author":"data.modeller","reviewer":"reviewer.lead"}'
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/builds" -ContentType "application/json" -Body '{}'
+Invoke-RestMethod -Headers $headers -Uri "$p/builds/status"
 
 # Wait until status is completed before saving stage 16.
-Invoke-RestMethod -Method Post -Uri "$p/graphs/snapshots" -ContentType "application/json" -Body '{}'
-Invoke-RestMethod -Uri "$p/graphs/data?limit=300"
+Invoke-RestMethod -Headers $headers -Method Post -Uri "$p/graphs/snapshots" -ContentType "application/json" -Body '{}'
+Invoke-RestMethod -Headers $headers -Uri "$p/graphs/data?limit=300"
 ~~~
 
 Poll build status until completed, blocked or failed. Blocking validation reports remain available through builds/stages/12 or builds/stages/15. Builds do not automatically approve ontologies.
 
-For CSV data, replace sources/sample with multipart sources/upload, then use draft mode "schema". Skip AI for uploaded data unless the live provider is configured; the recorded offline fixture fits only the retail sample.
+For PostgreSQL, send a connection request to `POST /sources/postgres` in place of the CSV upload. To generate suggestions, configure Groq and call `POST /ontology/suggestions`.
 
 Snapshot payload {"load_neo4j":true} queues staged Neo4j publication and returns a job with HTTP 202. Poll the build status endpoint. See [Published graph platform](../docs/PUBLISHED_GRAPH_PLATFORM.md) for migration, database setup and operation.
 

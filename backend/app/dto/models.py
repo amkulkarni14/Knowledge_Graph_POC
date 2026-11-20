@@ -33,6 +33,26 @@ class SessionCreate(StrictModel):
     name: Text
 
 
+class OntologySummary(BaseModel):
+    id: str
+    name: str
+    version: int
+    status: str
+    classes: int
+    relationships: int
+
+
+class WorkspaceSummary(BaseModel):
+    source_type: str | None = None
+    source_name: str | None = None
+    source_files: int = 0
+    tables: int | None = None
+    table_types: dict[str, int] = Field(default_factory=dict)
+    nodes: int | None = None
+    edges: int | None = None
+    ontology: OntologySummary | None = None
+
+
 class SessionView(BaseModel):
     id: UUID
     name: str
@@ -40,11 +60,14 @@ class SessionView(BaseModel):
     source_version: int
     job: dict[str, Any] | None
     expires_in_seconds: int
+    summary: WorkspaceSummary = Field(default_factory=WorkspaceSummary)
 
 
 class ScopeRequest(StrictModel):
     project: Text
     business_questions: list[Text] = Field(min_length=1, max_length=100)
+    scope_notes: Annotated[str, StringConstraints(max_length=4000)] = ""
+    columns_in_scope: list[Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,62}\.[A-Za-z_][A-Za-z0-9_]{0,62}\.[A-Za-z_][A-Za-z0-9_]{0,62}$")]] = Field(default_factory=list, max_length=1000)
     tables_in_scope: list[Table] = Field(default_factory=list, max_length=200)
     sensitive_columns: list[Annotated[str, StringConstraints(max_length=200)]] = Field(default_factory=list, max_length=1000)
     users: list[Text] = Field(default_factory=list, max_length=100)
@@ -52,6 +75,29 @@ class ScopeRequest(StrictModel):
 
     def domain(self):
         return ScopeSheet(**self.model_dump())
+
+
+class DomainRequest(ScopeRequest):
+    name: Text
+
+
+class SavedDomain(DomainRequest):
+    id: UUID
+
+
+class SavedOntologyVersion(BaseModel):
+    version: int | None
+    status: str
+    classes: int
+    relationships: int
+
+
+class SavedOntology(BaseModel):
+    workspace_id: UUID
+    workspace_name: str
+    ontology_id: str
+    name: str
+    versions: list[SavedOntologyVersion]
 
 
 class PostgresRequest(StrictModel):
@@ -65,10 +111,10 @@ class PostgresRequest(StrictModel):
 
 
 class DraftRequest(StrictModel):
-    mode: Literal["new", "template", "schema"]
-    ontology_id: Identifier = "retail"
-    namespace: Text = "com.example.retail"
-    name: Text = "Retail Knowledge Graph"
+    mode: Literal["new", "schema"]
+    ontology_id: Identifier = "knowledge-graph"
+    namespace: Text = "com.example.knowledge-graph"
+    name: Text = "Knowledge Graph"
     author: Text = "data.modeller"
 
 
@@ -143,7 +189,7 @@ class RelationshipRequest(StrictModel):
 
 class AIRequest(StrictModel):
     actor: Text
-    use_groq: bool = False
+    use_groq: Literal[True] = True
     include_samples: bool = False
     allowed_tables: list[Table] | None = Field(default=None, max_length=200)
 

@@ -45,22 +45,23 @@ def scoped(client):
     return base
 
 
-def prepared(client, source="sample"):
+def upload_csv(client, base):
+    folder = ROOT / "data/samples/customer360"
+    return client.post(base + "/sources/upload",
+                       files=[("files", (p.name, p.read_bytes(), "text/csv")) for p in sorted(folder.glob("*.csv"))])
+
+
+def prepared(client):
     base = scoped(client)
-    if source == "sample":
-        ok(client.post(base + "/sources/sample"))
-    else:
-        folder = ROOT / "data/samples/customer360"
-        ok(client.post(base + "/sources/upload",
-                       files=[("files", (p.name, p.read_bytes(), "text/csv")) for p in sorted(folder.glob("*.csv"))]))
+    ok(upload_csv(client, base))
     ok(client.post(base + "/metadata/extract"))
     ok(client.post(base + "/metadata/analyze"))
     return base
 
 
-def approved(client, source="sample"):
-    base = prepared(client, source)
-    ok(client.post(base + "/ontology/draft", json={"mode": "template" if source == "sample" else "schema"}))
+def approved(client):
+    base = prepared(client)
+    ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))
     ok(client.post(base + "/ontology/draft/save"))
     ok(client.post(base + "/ontology/suggestions/skip"))
     ok(client.post(base + "/ontology/review", json={"actor": "data.modeller"}))
@@ -91,11 +92,87 @@ def test_invalid_session_requests(client, body):
 
 def test_sessions_are_isolated_and_close(client):
     first, second = scoped(client), scoped(client)
-    ok(client.post(first + "/sources/sample"))
+    ok(upload_csv(client, first))
     assert ok(client.get(first))["completed_stages"] == [1, 2]
     assert ok(client.get(second))["completed_stages"] == [1]
     assert client.delete(first).status_code == 204
     assert client.get(first).status_code == 404
+
+
+def test_workspace_list_only_shows_active_sessions_owned_by_the_user(app, client):
+    first = session(client)
+    second = session(client)
+    app.state.sessions.create("Other user's workspace", owner="other")
+    assert {view["id"] for view in ok(client.get("/api/v1/sessions"))} == {first, second}
+    assert client.delete(f"/api/v1/sessions/{first}").status_code == 204
+    assert [view["id"] for view in ok(client.get("/api/v1/sessions"))] == [second]
+
+
+def test_csv_can_connect_before_scope_and_updates_workspace_summary(client):
+    base = "/api/v1/sessions/" + session(client)
+    assert client.post(base + "/sources/sample").status_code == 404
+    ok(upload_csv(client, base))
+    view = ok(client.get(base))
+    assert view["completed_stages"] == [2]
+    assert view["summary"]["source_type"] == "csv"
+    assert view["summary"]["source_files"] == 7
+    assert client.post(base + "/metadata/extract").status_code == 409
+    ok(client.put(base + "/scope", json={"project": "Test", "business_questions": ["What is connected?"]}))
+    ok(client.post(base + "/metadata/extract"))
+    ok(client.post(base + "/metadata/analyze"))
+    ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))
+    summary = ok(client.get(base))["summary"]
+    assert summary["tables"] == sum(summary["table_types"].values()) == 7
+    assert summary["ontology"]["classes"] > 0
+
+
+def test_postgres_connects_before_scope(client, monkeypatch):
+    from kg_pipeline.preprocessing.connectors import postgres_source
+
+    source = Mock(name="postgres_source")
+    source.name = "postgres://test"
+    source.schemas = ["public"]
+    source.ping.return_value = {"read_only": True}
+    monkeypatch.setattr(postgres_source, "PostgresSource", Mock(return_value=source))
+    base = "/api/v1/sessions/" + session(client)
+    missing = client.post(base + "/metadata/extract")
+    assert missing.json()["error"]["message"] == "Complete Data Sources first"
+    ok(client.post(base + "/sources/postgres", json={
+        "host": "localhost", "dbname": "test", "user": "reader", "password": "test"}))
+    assert ok(client.get(base))["completed_stages"] == [2]
+    missing = client.post(base + "/metadata/extract")
+    assert missing.json()["error"]["message"] == "Complete Goal & Scope first"
+
+
+def test_domain_template_persists_and_populates_scope(app, client):
+    from backend.app.repositories.library import list_domains
+
+    payload = {"name": "Customer domain", "project": "Customer 360", "scope_notes": "Account relationships",
+               "business_questions": ["Which accounts belong to each customer?"],
+               "tables_in_scope": ["csv.customers"], "columns_in_scope": ["csv.customers.cust_id"],
+               "sensitive_columns": ["csv.customers.email"], "users": ["Analysts"], "later_list": ["Loans"]}
+    saved = ok(client.post("/api/v1/domains", json=payload), 201)
+    assert ok(client.get("/api/v1/domains")) == [saved]
+    assert list_domains(app.state.config.storage_root, "other") == []
+    scope = {key: saved[key] for key in payload if key != "name"}
+    base = "/api/v1/sessions/" + session(client)
+    ok(upload_csv(client, base))
+    ok(client.put(base + "/scope", json=scope))
+    assert ok(client.get(base + "/scope")) == scope
+
+
+def test_saved_ontologies_include_versions_after_workspace_closes(app, client):
+    from backend.app.repositories.library import list_ontologies
+
+    base = approved(client)
+    ok(client.post(base + "/ontology/versions/1/rollback", params={"ontology_id": "knowledge-graph"},
+                   json={"actor": "data.modeller"}))
+    assert client.delete(base).status_code == 204
+    (saved,) = ok(client.get("/api/v1/ontologies"))
+    assert saved["ontology_id"] == "knowledge-graph"
+    assert [(row["version"], row["status"]) for row in saved["versions"]] == [
+        (2, "draft"), (1, "approved"), (None, "draft")]
+    assert list_ontologies(app.state.config.storage_root, "other") == []
 
 
 def test_expired_session_is_closed(app, client):
@@ -112,13 +189,13 @@ def test_capacity_and_busy_session(app, client):
     obj = app.state.sessions.get(UUID(base.rsplit("/", 1)[1]))
     obj.lock.acquire()
     try:
-        assert client.post(base + "/sources/sample").status_code == 409
+        assert upload_csv(client, base).status_code == 409
         assert client.delete(base).status_code == 409
     finally:
         obj.lock.release()
 
 
-@pytest.mark.parametrize("route", ["/sources/sample", "/metadata/extract", "/metadata/analyze",
+@pytest.mark.parametrize("route", ["/metadata/extract", "/metadata/analyze",
                                   "/ontology/validate", "/ontology/draft/save"])
 def test_missing_prerequisites(client, route):
     base = "/api/v1/sessions/" + session(client)
@@ -128,7 +205,7 @@ def test_missing_prerequisites(client, route):
 def test_source_change_invalidates_all_results(client):
     base = approved(client)
     build(client, base)
-    ok(client.post(base + "/sources/sample"))
+    ok(upload_csv(client, base))
     assert ok(client.get(base))["completed_stages"] == [1, 2]
     assert client.get(base + "/graphs/data").status_code == 409
     assert client.get(base + "/ontology/draft").status_code == 409
@@ -151,7 +228,7 @@ def test_bad_upload_preserves_connection(client):
     assert ok(client.get(base))["completed_stages"] == [1, 2, 3, 4]
 
 
-@pytest.mark.parametrize("filename", ["../bad.csv", r"..\bad.csv", "workbook.xlsx", ""])
+@pytest.mark.parametrize("filename", ["../bad.csv", r"..\bad.csv", "workbook.xlsx", "data.tsv", "data.txt", ""])
 def test_upload_filename_and_type_validation(client, filename):
     base = scoped(client)
     response = client.post(base + "/sources/upload", files=[("files", (filename, b"id\n1\n", "text/csv"))])
@@ -182,20 +259,17 @@ def test_credentials_never_echoed(client, monkeypatch):
 
 def test_table_whitelist_and_preview_limits(client):
     base = prepared(client)
-    assert client.get(base + "/metadata/preview", params={"table": "public.not_real"}).status_code == 404
-    assert client.get(base + "/metadata/preview", params={"table": "public.customers", "limit": 101}).status_code == 422
-    assert client.get(base + "/metadata/preview", params={"table": "public.customers;DROP TABLE x"}).status_code == 422
-    rows = ok(client.get(base + "/metadata/preview", params={"table": "public.customers", "limit": 2}))
+    assert client.get(base + "/metadata/preview", params={"table": "csv.not_real"}).status_code == 404
+    assert client.get(base + "/metadata/preview", params={"table": "csv.customers", "limit": 101}).status_code == 422
+    assert client.get(base + "/metadata/preview", params={"table": "csv.customers;DROP TABLE x"}).status_code == 422
+    rows = ok(client.get(base + "/metadata/preview", params={"table": "csv.customers", "limit": 2}))
     assert len(rows) == 2
 
 
-@pytest.mark.parametrize("source,expected", [("sample", (33, 52)), ("csv", (54, 64))])
-def test_complete_workflow_snapshots_and_graphs(client, source, expected):
-    base = approved(client, source)
+def test_complete_workflow_snapshots_and_graphs(client):
+    base = approved(client)
     report = build(client, base)
-    # Manual-only sample excludes the optional AI additions; use actual validation counts.
-    if source == "csv":
-        assert (report["nodes"], report["edges"]) == expected
+    assert (report["nodes"], report["edges"]) == (54, 64)
     assert report["ok"]
     graph = ok(client.get(base + "/graphs/data", params={"limit": 5, "edge_limit": 4}))
     assert len(graph["nodes"]) <= 5 and len(graph["edges"]) <= 4 and graph["truncated"]
@@ -218,7 +292,7 @@ def test_complete_workflow_snapshots_and_graphs(client, source, expected):
 
 def test_four_eyes_and_mapping_validation(client):
     base = prepared(client)
-    draft = ok(client.post(base + "/ontology/draft", json={"mode": "template"}))["ontology"]
+    draft = ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))["ontology"]
     draft["classes"][0]["mapping"]["key_columns"] = ["not_a_column"]
     assert client.put(base + "/ontology/draft", json={"ontology": draft}).status_code == 422
     assert client.post(base + "/ontology/approve", json={"author": "Same", "reviewer": "same"}).status_code == 422
@@ -235,7 +309,7 @@ def test_editor_mutation_invalidates_approval(client):
 
 def test_unknown_review_suggestion_and_empty_ai_allowlist(client):
     base = prepared(client)
-    ok(client.post(base + "/ontology/draft", json={"mode": "template"}))
+    ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))
     ok(client.post(base + "/ontology/draft/save"))
     assert client.post(base + "/ontology/suggestions", json={"actor": "author", "allowed_tables": []}).status_code == 422
     ok(client.post(base + "/ontology/suggestions/skip"))
@@ -244,7 +318,7 @@ def test_unknown_review_suggestion_and_empty_ai_allowlist(client):
 
 
 def test_build_job_status_and_storage_restoration(client):
-    base = approved(client, "csv")
+    base = approved(client)
     previous = pipeline_settings.storage_dir
     job = ok(client.post(base + "/builds", json={}), 202)
     assert job["status"] == "queued"
@@ -262,7 +336,7 @@ def test_build_job_status_and_storage_restoration(client):
 def test_snapshot_path_and_artifact_validation(client):
     base = scoped(client)
     assert client.get(base + "/graphs/data", params={"ontology_id": "../outside"}).status_code == 422
-    assert client.get(base + "/graphs/data", params={"ontology_id": "retail", "build_id": "../../outside"}).status_code == 422
+    assert client.get(base + "/graphs/data", params={"ontology_id": "knowledge-graph", "build_id": "../../outside"}).status_code == 422
 
 
 def test_cors_explicit_origin(client):
@@ -276,14 +350,14 @@ def test_cors_explicit_origin(client):
 
 def test_nested_unknown_fields_are_rejected(client):
     base = prepared(client)
-    draft = ok(client.post(base + "/ontology/draft", json={"mode": "template"}))["ontology"]
+    draft = ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))["ontology"]
     draft["classes"][0]["mapping"]["unrecognized"] = True
     assert client.put(base + "/ontology/draft", json={"ontology": draft}).status_code == 422
 
 
 def test_saved_draft_can_be_reverted_after_edit(client):
     base = prepared(client)
-    original = ok(client.post(base + "/ontology/draft", json={"mode": "template"}))["ontology"]
+    original = ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))["ontology"]
     ok(client.post(base + "/ontology/draft/save"))
     old = original["classes"][0]["name"]
     ok(client.patch(base + f"/ontology/classes/{old}", json={"name": "NewName"}))
@@ -292,42 +366,39 @@ def test_saved_draft_can_be_reverted_after_edit(client):
     assert 5 not in ok(client.get(base))["completed_stages"]
 
 
-def test_offline_ai_review_preserves_existing_sample_results(client):
+def test_manual_review_preview_matches_applied_review(client):
     base = prepared(client)
-    ok(client.post(base + "/ontology/draft", json={"mode": "template"}))
+    ok(client.post(base + "/ontology/draft", json={"mode": "schema"}))
     ok(client.post(base + "/ontology/draft/save"))
-    items = ok(client.post(base + "/ontology/suggestions", json={"actor": "data.modeller"}))
-    decisions = {i["item_id"]: {"action": "approve" if i["status"] in ("valid", "needs_review") else "reject"}
-                 for i in items if i["kind"] != "duplicate"}
-    body = {"actor": "data.modeller", "decisions": decisions,
-            "acyclic_relationships": ["Customer-[REFERRED]->Customer"], "watermark_column": "updated_at"}
+    ok(client.post(base + "/ontology/suggestions/skip"))
+    body = {"actor": "data.modeller"}
     preview = ok(client.post(base + "/ontology/review/preview", json=body))
     applied = ok(client.post(base + "/ontology/review", json=body))
     assert preview == applied
     assert ok(client.post(base + "/ontology/validate"))["ok"]
     ok(client.post(base + "/ontology/approve", json={"author": "data.modeller", "reviewer": "reviewer.lead"}))
     report = build(client, base)
-    assert (report["nodes"], report["edges"]) == (33, 52)
+    assert (report["nodes"], report["edges"]) == (54, 64)
 
 
 def test_versions_audit_and_rollback(client):
     base = approved(client)
-    rows = ok(client.get(base + "/ontology/versions", params={"ontology_id": "retail"}))
+    rows = ok(client.get(base + "/ontology/versions", params={"ontology_id": "knowledge-graph"}))
     assert len(rows) == 1 and rows[0]["status"] == "approved"
-    history = ok(client.get(base + "/ontology/audit", params={"ontology_id": "retail"}))
+    history = ok(client.get(base + "/ontology/audit", params={"ontology_id": "knowledge-graph"}))
     assert history["total"] >= 3
-    original = ok(client.get(base + "/ontology/versions/1", params={"ontology_id": "retail"}))
+    original = ok(client.get(base + "/ontology/versions/1", params={"ontology_id": "knowledge-graph"}))
     rolled = ok(client.post(base + "/ontology/versions/1/rollback",
-                            params={"ontology_id": "retail"}, json={"actor": "data.modeller"}))
+                            params={"ontology_id": "knowledge-graph"}, json={"actor": "data.modeller"}))
     assert rolled["version"] == 2 and rolled["status"] == "draft"
     assert rolled["classes"] == original["classes"]
-    ok(client.post(base + "/ontology/use-approved", params={"ontology_id": "retail"}))
+    ok(client.post(base + "/ontology/use-approved", params={"ontology_id": "knowledge-graph"}))
     assert 9 in ok(client.get(base))["completed_stages"]
 
 
 def test_failed_pipeline_call_restores_storage_and_state(app, client, monkeypatch):
     base = scoped(client)
-    ok(client.post(base + "/sources/sample"))
+    ok(upload_csv(client, base))
     previous = pipeline_settings.storage_dir
     monkeypatch.setattr(workflow.s03_schema_extraction, "run", Mock(side_effect=OSError("private/path")))
     result = client.post(base + "/metadata/extract")
@@ -340,7 +411,7 @@ def test_neo4j_is_not_called_unless_requested(client, monkeypatch):
     from kg_pipeline.graph_builder.loaders import s16_graph_persistence
     mocked = Mock(side_effect=AssertionError("must not connect"))
     monkeypatch.setattr(s16_graph_persistence, "push_to_neo4j", mocked)
-    base = approved(client, "csv")
+    base = approved(client)
     build(client, base)
     ok(client.post(base + "/graphs/snapshots", json={}))
     mocked.assert_not_called()
@@ -348,7 +419,7 @@ def test_neo4j_is_not_called_unless_requested(client, monkeypatch):
 
 def test_corrupt_export_is_not_downloaded(app, client):
     from uuid import UUID
-    base = approved(client, "csv")
+    base = approved(client)
     build(client, base)
     snapshot = ok(client.post(base + "/graphs/snapshots", json={}))
     obj = app.state.sessions.get(UUID(base.rsplit("/", 1)[1]))
@@ -362,15 +433,15 @@ def test_corrupt_export_is_not_downloaded(app, client):
 def test_sensitive_columns_are_hidden_from_previews(client):
     base = scoped(client)
     ok(client.put(base + "/scope", json={"project": "Privacy", "business_questions": ["Connections"],
-                                       "sensitive_columns": ["public.customers.email"]}))
-    ok(client.post(base + "/sources/sample"))
+                                       "sensitive_columns": ["csv.customers.email"]}))
+    ok(upload_csv(client, base))
     ok(client.post(base + "/metadata/extract"))
-    rows = ok(client.get(base + "/metadata/preview", params={"table": "public.customers"}))
+    rows = ok(client.get(base + "/metadata/preview", params={"table": "csv.customers"}))
     assert rows and all("email" not in row for row in rows)
 
 
 def test_rule_and_batch_validation(client):
-    base = approved(client, "csv")
+    base = approved(client)
     assert client.post(base + "/builds", json={"batch_size": 0}).status_code == 422
     response = client.post(base + "/builds", json={
         "business_rules": {"csv.nonexistent": [{"column": "id", "rule": "non_negative"}]}})

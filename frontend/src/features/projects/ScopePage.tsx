@@ -1,8 +1,16 @@
-import { Button, TextField } from "@mui/material";
+import { Button, MenuItem, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Link } from "react-router-dom";
+import { useDomains } from "../../api/libraryApi";
+import {
+  ScopeFields,
+  scopeSchema,
+  scopePayload,
+  scopeValues,
+  type ScopeValues,
+} from "./ScopeFields";
 import { scopeApi } from "../../api/workflowApi";
 import {
   useAction,
@@ -11,101 +19,62 @@ import {
 } from "../../shared/hooks/useWorkspace";
 import { Feedback, PageHeader, Panel } from "../../shared/ui/WorkspaceUi";
 import type { Schema } from "../../types/common.types";
-const schema = z.object({
-  project: z.string().trim().min(1, "Enter a project name.").max(200),
-  business_questions: z
-    .string()
-    .trim()
-    .min(1, "Add at least one business question."),
-  tables_in_scope: z.string(),
-  sensitive_columns: z.string(),
-  users: z.string(),
-  later_list: z.string(),
-});
-const lines = (s: string) =>
-  s
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
 function ScopeForm({
   scope,
 }: {
   scope: Schema<"ScopeRequest"> | null | undefined;
 }) {
+  const domains = useDomains();
+  const [domainId, setDomainId] = useState("");
+  const selectedDomain = domains.data?.find((domain) => domain.id === domainId);
   const {
     register,
     handleSubmit,
     formState: { errors, isDirty },
     getValues,
     reset,
-  } = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      project: scope?.project ?? "",
-      business_questions: scope?.business_questions.join("\n") ?? "",
-      tables_in_scope: scope?.tables_in_scope?.join("\n") ?? "",
-      sensitive_columns: scope?.sensitive_columns?.join("\n") ?? "",
-      users: scope?.users?.join("\n") ?? "",
-      later_list: scope?.later_list?.join("\n") ?? "",
-    },
+  } = useForm<ScopeValues>({
+    resolver: zodResolver(scopeSchema),
+    defaultValues: scopeValues(scope),
   });
-  const save = useAction((id) => {
-    const v = getValues();
-    return scopeApi.save(id, {
-      project: v.project,
-      business_questions: lines(v.business_questions),
-      tables_in_scope: lines(v.tables_in_scope),
-      sensitive_columns: lines(v.sensitive_columns),
-      users: lines(v.users),
-      later_list: lines(v.later_list),
-    });
-  });
+  const save = useAction((id) => scopeApi.save(id, scopePayload(getValues())));
   return (
-    <form onSubmit={handleSubmit(() => save.mutate(undefined,{onSuccess:()=>reset(getValues())}))} className="form-stack">
-      <TextField
-        label="Project name"
-        {...register("project")}
-        error={!!errors.project}
-        helperText={errors.project?.message}
-        required
-      />
-      <TextField
-        label="Business questions — one per line"
-        {...register("business_questions")}
-        multiline
-        minRows={3}
-        error={!!errors.business_questions}
-        helperText={errors.business_questions?.message}
-        required
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <form
+      onSubmit={handleSubmit(() =>
+        save.mutate(undefined, { onSuccess: () => reset(getValues()) }),
+      )}
+      className="form-stack"
+    >
+      <div className="toolbar">
         <TextField
-          label="Tables in scope — one per line"
-          {...register("tables_in_scope")}
-          multiline
-          minRows={3}
-          helperText="Qualified names, e.g. public.customers. Leave empty to include all tables."
-        />
-        <TextField
-          label="Sensitive columns — one per line"
-          {...register("sensitive_columns")}
-          multiline
-          minRows={3}
-          helperText="Qualified names, e.g. public.customers.email"
-        />
-        <TextField
-          label="Intended users — one per line"
-          {...register("users")}
-          multiline
-          minRows={2}
-        />
-        <TextField
-          label="Deferred scope — one per line"
-          {...register("later_list")}
-          multiline
-          minRows={2}
-        />
+          select
+          label="Saved domain"
+          value={domainId}
+          onChange={(event) => setDomainId(event.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+        >
+          <MenuItem value="">Select a domain</MenuItem>
+          {domains.data?.map((domain) => (
+            <MenuItem key={domain.id} value={domain.id}>
+              {domain.name}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Button
+          disabled={!selectedDomain || save.isPending}
+          onClick={() => {
+            if (selectedDomain)
+              reset(scopeValues(selectedDomain), { keepDefaultValues: true });
+          }}
+        >
+          Use domain
+        </Button>
+        <Button component={Link} to="/domains">
+          Manage domains
+        </Button>
       </div>
+      <Feedback pending={domains.isLoading} error={domains.error} />
+      <ScopeFields register={register} errors={errors} />
       <div className="toolbar">
         <Button type="submit" variant="contained" disabled={save.isPending}>
           Save scope

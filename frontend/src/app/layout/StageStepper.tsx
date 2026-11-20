@@ -1,7 +1,8 @@
 import { LinearProgress } from "@mui/material";
 import { useLocation } from "react-router-dom";
 import type { Stage } from "../../types/common.types";
-import { stageRoutes } from "../../constants/stages.constants";
+import { stagePosition, stageRoutes } from "../../constants/stages.constants";
+import { stageNavigation } from "../../constants/stageNavigation";
 export function StageStepper({
   stages,
   completed,
@@ -16,20 +17,21 @@ export function StageStepper({
       (pathname === "/build" && stage.no === 10),
   );
   const count = stages.filter((stage) => completed.includes(stage.no)).length;
+  const percent = stages.length ? Math.round((count / stages.length) * 100) : 0;
   return (
     <div className="workflow-bar" aria-label="Workflow progress">
       <div className="flex justify-between gap-3 mb-2">
         <span>
-          {current ? <>Viewing: <strong>{current.title}</strong></> : "Workflow progress"}
+          {current ? <strong>Stage {stagePosition(current.no)} · {stageNavigation[current.no]?.title ?? current.title}</strong> : "Workflow progress"}
         </span>
         <span>
-          {count} of {stages.length} stages completed
+          {count} of {stages.length} stages completed ({percent}%)
         </span>
       </div>
       <LinearProgress
         aria-label="Completed workflow stages"
         variant="determinate"
-        value={stages.length ? (count / stages.length) * 100 : 0}
+        value={percent}
       />
     </div>
   );

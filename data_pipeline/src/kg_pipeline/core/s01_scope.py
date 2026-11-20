@@ -15,6 +15,8 @@ from kg_pipeline.core.context import PipelineContext
 class ScopeSheet(BaseModel):
     project: str = "Retail Knowledge Graph"
     business_questions: list[str] = Field(default_factory=list)
+    scope_notes: str = ""
+    columns_in_scope: list[str] = Field(default_factory=list)
     tables_in_scope: list[str] = Field(default_factory=list)      # empty = all tables in the schema
     sensitive_columns: list[str] = Field(default_factory=list)    # "table.column"
     users: list[str] = Field(default_factory=list)
@@ -36,11 +38,11 @@ def default_scope() -> ScopeSheet:
     )
 
 
-def scope_for_files(project: str, filenames: list[str]) -> ScopeSheet:
-    """A neutral scope for a set of uploaded files (the default scope's questions are about the retail sample)."""
+def scope_for_source(project: str, filenames: list[str] | None = None) -> ScopeSheet:
+    """A neutral scope for an explicit data source."""
     return ScopeSheet(
         project=project,
-        business_questions=["How are the records in these files connected to each other?",
+        business_questions=["How are the records in this source connected to each other?",
                            "Which records sit at the centre of the network?",
                            "Which records are orphaned or duplicated?"],
         tables_in_scope=[], sensitive_columns=[],

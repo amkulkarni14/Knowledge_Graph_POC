@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from tempfile import NamedTemporaryFile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -24,6 +26,16 @@ from kg_pipeline.core.ontology_models import Ontology
 from kg_pipeline.core.ontology_models import OntologyStatus
 from kg_pipeline.ontology_compiler.s08_ontology_validation import ValidationReport
 from kg_pipeline.ontology_compiler.s08_ontology_validation import validate_ontology
+
+
+def write_ontology(path: Path, ontology: Ontology) -> None:
+    with NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as file:
+        temporary = Path(file.name)
+    try:
+        temporary.write_text(ontology.model_dump_json(indent=2), encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 class OntologyRepository:
@@ -46,7 +58,7 @@ class OntologyRepository:
             f.write(json.dumps(entry) + "\n")
 
     def _write(self, onto: Ontology) -> None:
-        self._file(onto.ontology_id, onto.version).write_text(onto.model_dump_json(indent=2), encoding="utf-8")
+        write_ontology(self._file(onto.ontology_id, onto.version), onto)
 
     @staticmethod
     def definition_hash(onto: Ontology) -> str:

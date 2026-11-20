@@ -1,8 +1,8 @@
 // Mirrors server PREREQUISITES for advisory action disabling only; the server is authoritative.
 export const prerequisites: Record<number, number[]> = {
   1: [],
-  2: [1],
-  3: [1, 2],
+  2: [],
+  3: [2, 1],
   4: [3],
   5: [3, 4],
   6: [5],
@@ -50,4 +50,15 @@ export function colorForLabel(label: string) {
       0,
     ) % graphColors.length
   ];
+}
+
+export const stageGroups = [
+  { title: "Data & Metadata", numbers: [2, 1, 3, 4] },
+  { title: "Ontology Engineering", numbers: [5, 6, 7, 8, 9] },
+  { title: "Graph Construction", numbers: [10, 11, 12, 13, 14, 15, 16] },
+];
+
+export const stageOrder = stageGroups.flatMap(({ numbers }) => numbers);
+export function stagePosition(stage: number) {
+  return stageOrder.indexOf(stage) + 1;
 }

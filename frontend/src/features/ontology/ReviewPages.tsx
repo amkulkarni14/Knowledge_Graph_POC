@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Button,
   TextField,
@@ -24,10 +25,10 @@ import {
 } from "../../shared/ui/WorkspaceUi";
 import type { Schema } from "../../types/common.types";
 export default function ReviewPages({ mode }: { mode: string }) {
-  const { id, done, can } = useWorkspace();
+  const { id, done, can, session } = useWorkspace();
+  const [params] = useSearchParams();
   const [actor, setActor] = useState("data.modeller");
   const [reviewer, setReviewer] = useState("");
-  const [live, setLive] = useState(false);
   const [samples, setSamples] = useState(false);
   const [allowed, setAllowed] = useState<string[]>([]);
   const [restrict, setRestrict] = useState(false);
@@ -36,7 +37,8 @@ export default function ReviewPages({ mode }: { mode: string }) {
   >({});
   const [acyclic, setAcyclic] = useState("");
   const [watermark, setWatermark] = useState("");
-  const [ontologyId, setOntologyId] = useState("retail");
+  const [selectedOntologyId, setOntologyId] = useState<string>();
+  const ontologyId = selectedOntologyId ?? params.get("ontology") ?? session.data?.summary?.ontology?.id ?? "knowledge-graph";
   const [version, setVersion] = useState(1);
   const [offset, setOffset] = useState(0);
   const [confirm, setConfirm] = useState<"approve" | "rollback" | null>(null);
@@ -79,7 +81,7 @@ export default function ReviewPages({ mode }: { mode: string }) {
   const generate = useAction((sid) =>
     ontologyApi.suggest(sid, {
       actor,
-      use_groq: live,
+      use_groq: true,
       include_samples: samples,
       allowed_tables: restrict ? allowed : undefined,
     }),
@@ -156,15 +158,6 @@ export default function ReviewPages({ mode }: { mode: string }) {
               <FormControlLabel
                 control={
                   <Checkbox
-                    checked={live}
-                    onChange={(e) => setLive(e.target.checked)}
-                  />
-                }
-                label="Use live Groq provider"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
                     checked={samples}
                     onChange={(e) => setSamples(e.target.checked)}
                   />
@@ -202,9 +195,8 @@ export default function ReviewPages({ mode }: { mode: string }) {
                 </TextField>
               )}
               <p className="muted">
-                Offline suggestions are recorded for the retail sample. Skip AI
-                for uploaded data unless the live provider is configured. Live
-                requests send selected context to the configured provider.
+                Generate suggestions with Groq when the provider is configured.
+                Requests send selected context to the provider.
               </p>
               <Button
                 variant="contained"

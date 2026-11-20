@@ -91,7 +91,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Sessions */
+        get: operations["list_sessions_api_v1_sessions_get"];
         put?: never;
         /** Create */
         post: operations["create_api_v1_sessions_post"];
@@ -148,23 +149,6 @@ export interface paths {
         get: operations["events_api_v1_sessions__session_id__events_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sessions/{session_id}/sources/sample": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Sample */
-        post: operations["sample_api_v1_sessions__session_id__sources_sample_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1355,6 +1339,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Domains */
+        get: operations["domains_api_v1_domains_get"];
+        put?: never;
+        /** Create Domain */
+        post: operations["create_domain_api_v1_domains_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ontologies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ontologies */
+        get: operations["ontologies_api_v1_ontologies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1365,9 +1384,10 @@ export interface components {
             actor: string;
             /**
              * Use Groq
-             * @default false
+             * @default true
+             * @constant
              */
-            use_groq: boolean;
+            use_groq: true;
             /**
              * Include Samples
              * @default false
@@ -1702,26 +1722,50 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** DomainRequest */
+        DomainRequest: {
+            /** Project */
+            project: string;
+            /** Business Questions */
+            business_questions: string[];
+            /**
+             * Scope Notes
+             * @default
+             */
+            scope_notes: string;
+            /** Columns In Scope */
+            columns_in_scope?: string[];
+            /** Tables In Scope */
+            tables_in_scope?: string[];
+            /** Sensitive Columns */
+            sensitive_columns?: string[];
+            /** Users */
+            users?: string[];
+            /** Later List */
+            later_list?: string[];
+            /** Name */
+            name: string;
+        };
         /** DraftRequest */
         DraftRequest: {
             /**
              * Mode
              * @enum {string}
              */
-            mode: "new" | "template" | "schema";
+            mode: "new" | "schema";
             /**
              * Ontology Id
-             * @default retail
+             * @default knowledge-graph
              */
             ontology_id: string;
             /**
              * Namespace
-             * @default com.example.retail
+             * @default com.example.knowledge-graph
              */
             namespace: string;
             /**
              * Name
-             * @default Retail Knowledge Graph
+             * @default Knowledge Graph
              */
             name: string;
             /**
@@ -1847,6 +1891,21 @@ export interface components {
          * @enum {string}
          */
         OntologyStatus: "draft" | "pending_review" | "approved" | "rejected" | "superseded";
+        /** OntologySummary */
+        OntologySummary: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: number;
+            /** Status */
+            status: string;
+            /** Classes */
+            classes: number;
+            /** Relationships */
+            relationships: number;
+        };
         /**
          * Origin
          * @enum {string}
@@ -1984,6 +2043,10 @@ export interface components {
         Result_Page_dict__: {
             data: components["schemas"]["Page_dict_"];
         };
+        /** Result[SavedDomain] */
+        Result_SavedDomain_: {
+            data: components["schemas"]["SavedDomain"];
+        };
         /** Result[SchemaCatalog] */
         Result_SchemaCatalog_: {
             data: components["schemas"]["SchemaCatalog"];
@@ -2010,6 +2073,21 @@ export interface components {
         Result_list_ReviewItem__: {
             /** Data */
             data: components["schemas"]["ReviewItem"][];
+        };
+        /** Result[list[SavedDomain]] */
+        Result_list_SavedDomain__: {
+            /** Data */
+            data: components["schemas"]["SavedDomain"][];
+        };
+        /** Result[list[SavedOntology]] */
+        Result_list_SavedOntology__: {
+            /** Data */
+            data: components["schemas"]["SavedOntology"][];
+        };
+        /** Result[list[SessionView]] */
+        Result_list_SessionView__: {
+            /** Data */
+            data: components["schemas"]["SessionView"][];
         };
         /** Result[list[dict]] */
         Result_list_dict__: {
@@ -2073,6 +2151,62 @@ export interface components {
             /** Values */
             values?: string[] | null;
         };
+        /** SavedDomain */
+        SavedDomain: {
+            /** Project */
+            project: string;
+            /** Business Questions */
+            business_questions: string[];
+            /**
+             * Scope Notes
+             * @default
+             */
+            scope_notes: string;
+            /** Columns In Scope */
+            columns_in_scope?: string[];
+            /** Tables In Scope */
+            tables_in_scope?: string[];
+            /** Sensitive Columns */
+            sensitive_columns?: string[];
+            /** Users */
+            users?: string[];
+            /** Later List */
+            later_list?: string[];
+            /** Name */
+            name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** SavedOntology */
+        SavedOntology: {
+            /**
+             * Workspace Id
+             * Format: uuid
+             */
+            workspace_id: string;
+            /** Workspace Name */
+            workspace_name: string;
+            /** Ontology Id */
+            ontology_id: string;
+            /** Name */
+            name: string;
+            /** Versions */
+            versions: components["schemas"]["SavedOntologyVersion"][];
+        };
+        /** SavedOntologyVersion */
+        SavedOntologyVersion: {
+            /** Version */
+            version: number | null;
+            /** Status */
+            status: string;
+            /** Classes */
+            classes: number;
+            /** Relationships */
+            relationships: number;
+        };
         /** SchemaCatalog */
         SchemaCatalog: {
             /** Tables */
@@ -2096,6 +2230,13 @@ export interface components {
             project: string;
             /** Business Questions */
             business_questions: string[];
+            /**
+             * Scope Notes
+             * @default
+             */
+            scope_notes: string;
+            /** Columns In Scope */
+            columns_in_scope?: string[];
             /** Tables In Scope */
             tables_in_scope?: string[];
             /** Sensitive Columns */
@@ -2129,6 +2270,7 @@ export interface components {
             } | null;
             /** Expires In Seconds */
             expires_in_seconds: number;
+            summary?: components["schemas"]["WorkspaceSummary"];
         };
         /** SnapshotRequest */
         SnapshotRequest: {
@@ -2250,6 +2392,29 @@ export interface components {
              */
             value: string;
         };
+        /** WorkspaceSummary */
+        WorkspaceSummary: {
+            /** Source Type */
+            source_type?: string | null;
+            /** Source Name */
+            source_name?: string | null;
+            /**
+             * Source Files
+             * @default 0
+             */
+            source_files: number;
+            /** Tables */
+            tables?: number | null;
+            /** Table Types */
+            table_types?: {
+                [key: string]: number;
+            };
+            /** Nodes */
+            nodes?: number | null;
+            /** Edges */
+            edges?: number | null;
+            ontology?: components["schemas"]["OntologySummary"] | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -2366,6 +2531,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Result_list_dict__"];
+                };
+            };
+        };
+    };
+    list_sessions_api_v1_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_list_SessionView__"];
                 };
             };
         };
@@ -2550,37 +2735,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Result_Page_dict__"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    sample_api_v1_sessions__session_id__sources_sample_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                session_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Result_dict_"];
                 };
             };
             /** @description Validation Error */
@@ -5305,6 +5459,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    domains_api_v1_domains_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_list_SavedDomain__"];
+                };
+            };
+        };
+    };
+    create_domain_api_v1_domains_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DomainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_SavedDomain_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ontologies_api_v1_ontologies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_list_SavedOntology__"];
                 };
             };
         };

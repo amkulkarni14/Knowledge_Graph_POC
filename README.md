@@ -45,9 +45,8 @@ Run the pipeline directly from the repository root with the Python requirements 
 
 ```powershell
 python -m pip install -r requirements.txt
-python scripts/run_pipeline.py
 python scripts/run_pipeline.py --postgres
-python scripts/run_pipeline.py --use-groq
+python scripts/run_pipeline.py --postgres --use-groq
 python scripts/run_pipeline.py --csv-dir data/samples/customer360
 ```
 
@@ -67,8 +66,8 @@ python scripts/run_pipeline.py --csv-dir data/samples/customer360
 
 | # | Stage | Output |
 |---|---|---|
-| 1 | Goal & scope | scope sheet (questions, tables, sensitive columns) |
-| 2 | Connect safely | read-only session (statement timeout, pool) **or** several uploaded CSV files as in-memory tables |
+| 1 | Data Sources | Read-only PostgreSQL connection or uploaded CSV files |
+| 2 | Goal & Scope | Scope sheet (questions, tables, sensitive columns) |
 | 3 | Schema extraction | SchemaCatalog from `pg_catalog` |
 | 4 | Schema analysis | table types, relationship candidates, undeclared FKs |
 | 5 | Manual ontology | draft: classes, attributes, relationships, mapping (hand-made, or **🪄 drafted from the schema by rules**) |
@@ -84,17 +83,13 @@ python scripts/run_pipeline.py --csv-dir data/samples/customer360
 | 15 | Graph validation | reconciliation + ontology conformance |
 | 16 | Store graph | versioned snapshot, CURRENT pointer, optional Neo4j |
 
-On the sample data the result is 33 nodes and 52 edges: customer 11 is merged into customer 2,
-product 206 (negative price) and the PLACED edge of order 1012 (customer 99 does not exist) are
-quarantined with reasons, and Customer:7 is reported as isolated.
+## Uploading CSV files
 
-## Uploading CSV files (Stage 2)
-
-Stage 2 → **Upload CSV files** takes several files at once. Each file becomes a table `csv.<file_name>`; everything
-after Stage 2 runs unchanged because the files sit behind the same read-only `DataSource` interface as PostgreSQL.
+**Data Sources → CSV upload** takes several files at once. Each file becomes a table `csv.<file_name>`; everything
+after source connection runs unchanged because the files sit behind the same read-only `DataSource` interface as PostgreSQL.
 On the 7 bundled Customer 360 files the whole pipeline gives **54 nodes and 64 edges**, in any file order.
 
-What is worked out from the files (rules only, no AI), and shown in Stage 2 with every doubt listed as a warning:
+What is worked out from the files (rules only, no AI), and shown in Data Sources with every doubt listed as a warning:
 
 | Step | Rule |
 |---|---|
@@ -110,12 +105,11 @@ through the same validation (Stage 8), four-eyes approval (Stage 9) and build (S
 The same button works for PostgreSQL schemas.
 
 Safety: files live in memory only (never written to disk); limits `KG_MAX_UPLOAD_FILES` (25), `KG_MAX_UPLOAD_MB` (25 per file) and
-`KG_MAX_UPLOAD_ROWS` (200 000 per file); only `.csv/.tsv/.txt`, binary files refused, file names reduced to a safe table name,
+`KG_MAX_UPLOAD_ROWS` (200 000 per file); only `.csv`, binary files refused, file names reduced to a safe table name,
 cells that start with `= + - @` are reported and kept as text. **All files are checked before anything is loaded** — if one is bad
 the upload is rejected with every reason and the previous connection stays as it was.
 
-Things to know: the AI step (Stage 6) is optional for files — the recorded offline answer only fits the built-in sample, so with files it
-needs a live Groq key or is skipped. Cleaning in Stage 13 handles spacing, case and merging of records; messy number or date formats
+The AI step (Stage 6) is optional and requires a Groq key when enabled. Cleaning in Stage 13 handles spacing, case and merging of records; messy number or date formats
 (`₹ 45,00,000`, `12/03/1985`, `8.5%`) must be fixed in the file — they are reported as warnings and kept as text.
 `data/samples/customer360_messy` shows this: it is refused because its identifiers repeat.
 

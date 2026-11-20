@@ -1,30 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Alert, Button, TextField } from "@mui/material";
-import {
-  Network,
-  ArrowRight,
-  Check,
-  Database,
-  Shapes,
-  GitBranch,
-  Compass,
-  ScanSearch,
-  ChartNoAxesCombined,
-  Sparkles,
-  ClipboardCheck,
-  BadgeCheck,
-  History,
-  ListChecks,
-  Rows3,
-  ShieldCheck,
-  Workflow,
-  HardDrive,
-  type LucideIcon,
-} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, Button, LinearProgress, TextField } from "@mui/material";
+import { ArrowRight, ChartNoAxesCombined, Check, Workflow } from "lucide-react";
+import { ApiError, get } from "../../api/client";
+import { useSavedOntologies } from "../../api/libraryApi";
 import { sessionsApi } from "../../api/sessionsApi";
-import { useSessionStore } from "../../app/store";
+import { useGraphStore, useSessionStore } from "../../app/store";
 import { useWorkspace } from "../../shared/hooks/useWorkspace";
 import {
   PageHeader,
@@ -32,233 +14,513 @@ import {
   Feedback,
   StatusChip,
 } from "../../shared/ui/WorkspaceUi";
-import { prerequisites, stageRoutes } from "../../constants/stages.constants";
+import {
+  stageGroups,
+  stageOrder,
+  stagePosition,
+  stageRoutes,
+} from "../../constants/stages.constants";
+import { stageNavigation } from "../../constants/stageNavigation";
 
-const stageIcons: Record<number, LucideIcon> = {
-  1: Compass,
-  2: Database,
-  3: ScanSearch,
-  4: ChartNoAxesCombined,
-  5: Shapes,
-  6: Sparkles,
-  7: ClipboardCheck,
-  8: BadgeCheck,
-  9: History,
-  10: ListChecks,
-  11: Rows3,
-  12: ShieldCheck,
-  13: Workflow,
-  14: Network,
-  15: BadgeCheck,
-  16: HardDrive,
+type PublishedProject = {
+  project_id: string;
+  name: string;
+  current_build_id: string | null;
+  ontology_id?: string | null;
+  ontology_version?: number | null;
 };
 
-const stageTitles: Record<number, string> = {
-  1: "Goal & Scope",
-  2: "Data Sources",
-  3: "Schema Extraction",
-  4: "Schema Analysis",
-  5: "Ontology Studio",
-  6: "AI Suggestions",
-  7: "Review & Approval",
-  8: "Ontology Validation",
-  9: "Ontology Versioning",
-  10: "Build Plan",
-  11: "Data Extraction",
-  12: "Data Quality",
-  13: "Cleaning & Entity Resolution",
-  14: "Graph Construction",
-  15: "Graph Validation",
-  16: "Storage & Snapshots",
+const descriptions: Record<number, string> = {
+  2: "Upload CSV files or connect to PostgreSQL.",
+  1: "Define business questions and the data in scope.",
+  3: "Extract tables, columns, keys, and relationships.",
+  4: "Classify tables and identify candidate relationships.",
+  5: "Map source tables to entities and relationships.",
+  6: "Generate AI suggestions or skip this step.",
+  7: "Review mappings and apply decisions.",
+  8: "Check ontology structure and source mappings.",
+  9: "Approve and manage ontology versions.",
+  10: "Plan how source records become graph entities.",
+  11: "Read the records required by the build plan.",
+  12: "Check records against quality rules.",
+  13: "Standardize records and resolve duplicates.",
+  14: "Build graph nodes and edges.",
+  15: "Check graph integrity before saving.",
+  16: "Save or publish a validated graph.",
 };
-
-const lifecycle = [
-  { title: "Data Sources", icon: Database },
-  { title: "Metadata", icon: ScanSearch },
-  { title: "Ontology", icon: Shapes },
-  { title: "Graph Construction", icon: Network },
-  { title: "Exploration", icon: Compass },
-];
 
 export default function OverviewPage() {
   const [name, setName] = useState("Knowledge workspace");
-  const { id, session, done } = useWorkspace();
+  const navigate = useNavigate();
+  const client = useQueryClient();
+  const savedOntologies = useSavedOntologies();
+  const { id, session, done, can } = useWorkspace();
   const notice = useSessionStore((s) => s.notice);
-  const stages = useQuery({
-    queryKey: ["stages"],
-    queryFn: ({ signal }) => sessionsApi.stages(signal),
-  });
   const health = useQuery({
     queryKey: ["health"],
     queryFn: ({ signal }) => sessionsApi.health(signal),
+    staleTime: 15000,
+    retry: false,
+  });
+  const projects = useQuery({
+    queryKey: ["published-projects"],
+    queryFn: ({ signal }) =>
+      get<PublishedProject[]>("/graph-projects", undefined, signal),
+    retry: false,
+  });
+  const workspaces = useQuery({
+    queryKey: ["workspaces"],
+    queryFn: ({ signal }) => sessionsApi.list(signal),
+    refetchInterval: 10000,
+    retry: false,
   });
   const create = useMutation({
     mutationFn: () => sessionsApi.create({ name: name.trim() }),
-    onSuccess: (s) => useSessionStore.getState().setSession(s.id),
+    onSuccess: (workspace) => {
+      void client.invalidateQueries({ queryKey: ["workspaces"] });
+      client.setQueryData(["workspace", workspace.id, "session"], workspace);
+      useSessionStore.getState().setSession(workspace.id);
+      navigate("/sources");
+    },
     gcTime: 0,
   });
-  if (!id)
-    return (
-      <div className="empty-workspace">
-        {notice && (
-          <Alert severity="info" className="mb-5">
-            {notice}
-          </Alert>
-        )}
-        <div className="creation-lifecycle" aria-label="Knowledge graph workflow">
-          {lifecycle.map(({ title, icon: Icon }, index) => (
-            <span className="lifecycle-step" key={title}>
-              <Icon size={15} />
-              <span>{title}</span>
-              {index < lifecycle.length - 1 && <span className="lifecycle-connector" aria-hidden="true" />}
-            </span>
-          ))}
-        </div>
-        <div className="creation-heading">
-          <div className="intro-icon">
-            <Network size={23} />
-          </div>
-          <PageHeader
-            eyebrow="KNOWLEDGE GRAPH WORKSPACE"
-            title="Create your knowledge workspace"
-            description="Connect data sources, define an ontology, and build a knowledge graph through a guided workflow."
-          />
-        </div>
-        <Panel title="Workspace details">
-          <form
-            className="form-stack"
-            onSubmit={(e) => {
-              e.preventDefault();
-              create.mutate();
-            }}
-          >
-            <TextField
-              label="Workspace name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              slotProps={{ htmlInput: { maxLength: 200 } }}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={create.isPending || !name.trim()}
-              endIcon={<ArrowRight size={16} />}
-            >
-              Create workspace
-            </Button>
-            <Feedback pending={create.isPending} error={create.error} />
-            <p className="muted">
-              Sessions expire after inactivity. Keep this browser session open;
-              restarting the backend ends active sessions.
-            </p>
-          </form>
-        </Panel>
-        <Feedback error={health.error} />
-      </div>
-    );
-  const next = stages.data?.find((s) => !done.includes(s.no));
+
+  const published =
+    projects.data?.filter((project) => project.current_build_id) ?? [];
+  const registryDisabled =
+    projects.error instanceof ApiError &&
+    projects.error.code === "registry_unconfigured";
+  const summary = session.data?.summary;
+  const ontology = summary?.ontology;
+  const job = session.data?.job;
+  const running = ["queued", "running", "cancelling", "publishing"].includes(
+    String(job?.status),
+  );
+  const runningStage =
+    running && typeof job?.stage === "number" ? job.stage : undefined;
+  const next = stageOrder.find((stage) => !done.includes(stage) && can(stage));
+  const completed = stageOrder.filter((stage) => done.includes(stage)).length;
+  const percent = Math.round((completed / stageOrder.length) * 100);
+  const hasGraph = done.includes(14);
+  const otherWorkspaces =
+    workspaces.data?.filter((workspace) => workspace.id !== id) ?? [];
+  const builtCount =
+    Number(hasGraph) +
+    otherWorkspaces.filter((workspace) =>
+      workspace.completed_stages.includes(14),
+    ).length;
+  function openWorkspace(workspaceId: string) {
+    useGraphStore.getState().reset();
+    useSessionStore.getState().setSession(workspaceId);
+  }
+  const sourceType =
+    summary?.source_type === "csv"
+      ? "CSV"
+      : summary?.source_type === "postgres"
+        ? "PostgreSQL"
+        : undefined;
+  const publishedOntologies = published.filter(
+    (project) => project.ontology_id,
+  );
+  const useWorkspaceGraph = Boolean(id) && (hasGraph || !published.length);
+  const intelligencePath = useWorkspaceGraph
+    ? "/explorer"
+    : "/published-graphs";
+
   return (
     <>
       <PageHeader
-        title="Workspace overview"
-        description="Turn source data into a reviewed, validated knowledge graph. Every stage uses your live workspace state."
+        title="Home"
         action={
-          <Button
-            component={Link}
-            to={next ? stageRoutes[next.no] : "/explorer"}
-            variant="contained"
-            endIcon={<ArrowRight size={16} />}
-          >
-            {next ? "Continue workflow" : "Explore graph"}
-          </Button>
+          id &&
+          session.data && (
+            <Button
+              component={Link}
+              to={
+                runningStage
+                  ? stageRoutes[runningStage]
+                  : next
+                    ? stageRoutes[next]
+                    : "/explorer"
+              }
+              variant="contained"
+              endIcon={<ArrowRight size={16} />}
+            >
+              {runningStage
+                ? "View running stage"
+                : next
+                  ? "Continue workflow"
+                  : "Explore graph"}
+            </Button>
+          )
         }
       />
+      {notice && (
+        <Alert severity="info" className="mb-5">
+          {notice}
+        </Alert>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        {[
-          {
-            title: "Workflow progress",
-            value: `${done.length} / ${stages.data?.length ?? 16}`,
-            detail: "Workflow stages completed",
-            icon: GitBranch,
-          },
-          {
-            title: "Data sources",
-            value: done.includes(2) ? "Connected" : "Not connected",
-            detail: done.includes(2) ? "Source stage completed" : "Connect a source to continue",
-            icon: Database,
-          },
-          {
-            title: "Ontology",
-            value: done.includes(9)
-              ? "Approved"
-              : done.includes(5)
-                ? "Draft"
-                : "Not started",
-            detail: done.includes(9) ? "Approved ontology available" : "Review and approval required",
-            icon: Shapes,
-          },
-        ].map((m) => (
-          <Panel
-            title={m.title}
-            key={m.title}
-            action={<m.icon size={17} className="text-slate-400" />}
-          >
-            <div className={`metric ${m.title === "Workflow progress" ? "metric-compact" : ""}`}>{m.value}</div>
-            <p className="muted">{m.detail}</p>
-          </Panel>
-        ))}
+        <Panel title="Created knowledge graphs">
+          <div className="metric">
+            {projects.data ? published.length : registryDisabled ? "0" : "—"}
+          </div>
+          <p className="muted">
+            Published graphs
+            {registryDisabled ? " · Publishing is not configured" : ""}
+          </p>
+          <div className="report-row">
+            <span>Built in active workspaces</span>
+            <strong>{workspaces.data ? builtCount : "Pending"}</strong>
+          </div>
+          <Feedback
+            pending={projects.isLoading}
+            error={registryDisabled ? undefined : projects.error}
+          />
+          <Button component={Link} to="/published-graphs">
+            View published graphs
+          </Button>
+        </Panel>
+        <Panel title="Workflow progress">
+          <div className="metric">{percent}%</div>
+          <LinearProgress
+            variant="determinate"
+            value={percent}
+            aria-label="Workflow completion"
+          />
+          <p className="muted mt-2">
+            {completed} of {stageOrder.length} stages completed
+          </p>
+          <p className="muted">
+            {session.isLoading
+              ? "Loading workspace"
+              : runningStage
+                ? `Running · ${stageNavigation[runningStage]?.title ?? "Build"}`
+                : running
+                  ? `Build ${String(job?.status)}`
+                  : job?.status === "failed" ||
+                      job?.status === "blocked" ||
+                      job?.status === "cancelled"
+                    ? `Build ${job.status}`
+                    : percent === 100
+                      ? "Workflow complete"
+                      : completed
+                        ? "In progress"
+                        : id
+                          ? "Ready to start"
+                          : otherWorkspaces.length
+                            ? "Open a workspace to see its stages"
+                            : "No active workspace"}
+          </p>
+        </Panel>
+        <Panel title="Connections">
+          <div className="report-row">
+            <span>API</span>
+            <strong>
+              {health.isError
+                ? "Offline"
+                : health.data
+                  ? "Connected"
+                  : "Checking"}
+            </strong>
+          </div>
+          <div className="report-row">
+            <span>Data source</span>
+            <strong>{sourceType ?? "Unconfigured"}</strong>
+          </div>
+          {sourceType && (
+            <p className="muted mt-2">
+              {summary?.source_name}
+              {sourceType === "CSV" && ` · ${summary?.source_files ?? 0} files`}
+            </p>
+          )}
+          {id && (
+            <Button component={Link} to="/sources">
+              Manage source
+            </Button>
+          )}
+        </Panel>
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-5">
-        <Panel
-          title="Your workflow"
-          action={<StatusChip>{session.data?.name ?? "Active workspace"}</StatusChip>}
-        >
-          <div className="workflow-list">
-            {stages.data?.map((s) => {
-              const Icon = stageIcons[s.no] ?? Workflow;
-              const complete = done.includes(s.no);
-              const blocked = !complete && !(prerequisites[s.no] ?? []).every((n) => done.includes(n));
-              const status = complete ? "Completed" : blocked ? "Blocked" : "Pending";
+
+      {otherWorkspaces.length > 0 && (
+        <div className="mb-5">
+          <Panel title={id ? "Other active workspaces" : "Active workspaces"}>
+            {otherWorkspaces.map((workspace) => {
+              const count = stageOrder.filter((stage) =>
+                workspace.completed_stages.includes(stage),
+              ).length;
+              const status =
+                typeof workspace.job?.status === "string"
+                  ? workspace.job.status
+                  : undefined;
               return (
-                <Link className="stage-item" to={stageRoutes[s.no]} key={s.no}>
-                  <span className={`stage-icon ${complete ? "done" : ""}`} aria-hidden="true">
-                    {complete ? <Check size={14} /> : <Icon size={14} />}
-                  </span>
-                  <span className="stage-label">{stageTitles[s.no] ?? s.title}</span>
-                  <span className={`status-pill ${complete ? "success" : blocked ? "blocked" : "pending"}`}>
-                    {status}
-                  </span>
-                  <ArrowRight size={13} aria-hidden="true" />
-                </Link>
+                <div className="report-row items-center" key={workspace.id}>
+                  <div>
+                    <strong>{workspace.name}</strong>
+                    <p className="muted">
+                      {Math.round((count / stageOrder.length) * 100)}% complete
+                      {status && ` · Build ${status}`}
+                    </p>
+                  </div>
+                  <Button onClick={() => openWorkspace(workspace.id)}>
+                    Open workspace
+                  </Button>
+                </div>
               );
             })}
-          </div>
+          </Panel>
+        </div>
+      )}
+      <Feedback error={workspaces.error} />
+
+      {!id && (
+        <div className="mb-5">
+          <Panel title="Create a workspace">
+            <form
+              className="form-stack"
+              onSubmit={(event) => {
+                event.preventDefault();
+                create.mutate();
+              }}
+            >
+              <TextField
+                label="Workspace name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+                slotProps={{ htmlInput: { maxLength: 200 } }}
+              />
+              <div>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={create.isPending || !name.trim()}
+                >
+                  Create workspace
+                </Button>
+              </div>
+              <Feedback pending={create.isPending} error={create.error} />
+            </form>
+          </Panel>
+        </div>
+      )}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-5">
+        <Panel
+          title="Workflow stages"
+          action={session.data && <StatusChip>{session.data.name}</StatusChip>}
+        >
+          {stageGroups.map(({ title, numbers }) => (
+            <section key={title} className="mb-5">
+              <h3 className="mb-2">{title}</h3>
+              <div className="workflow-list">
+                {numbers.map((stage) => {
+                  const { icon: Icon, title } = stageNavigation[stage];
+                  const complete = done.includes(stage);
+                  const active = runningStage === stage;
+                  const blocked = Boolean(session.data) && !can(stage);
+                  const status = active
+                    ? "Running"
+                    : complete
+                      ? "Completed"
+                      : blocked
+                        ? "Waiting"
+                        : "Pending";
+                  const content = (
+                    <>
+                      <span
+                        className={`stage-icon ${complete ? "done" : ""}`}
+                        aria-hidden="true"
+                      >
+                        {complete ? <Check size={14} /> : <Icon size={14} />}
+                      </span>
+                      <span className="stage-label">
+                        {stagePosition(stage)}. {title}
+                        <small className="muted block mt-1">
+                          {descriptions[stage]}
+                        </small>
+                      </span>
+                      {session.data && (
+                        <span
+                          className={`status-pill ${complete && !active ? "success" : blocked ? "blocked" : "pending"}`}
+                        >
+                          {status}
+                        </span>
+                      )}
+                      {id && <ArrowRight size={13} aria-hidden="true" />}
+                    </>
+                  );
+                  return id ? (
+                    <Link
+                      className="stage-item"
+                      to={stageRoutes[stage]}
+                      key={stage}
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className="stage-item" key={stage}>
+                      {content}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+          <section>
+            <h3 className="mb-2">Graph Intelligence</h3>
+            <div className="toolbar">
+              <Button
+                component={Link}
+                to={`${intelligencePath}?view=${useWorkspaceGraph ? "path" : "explorer"}`}
+                startIcon={<Workflow size={15} />}
+              >
+                Path Analysis
+              </Button>
+              <Button
+                component={Link}
+                to={`${intelligencePath}?view=${useWorkspaceGraph ? "metrics" : "analytics"}`}
+                startIcon={<ChartNoAxesCombined size={15} />}
+              >
+                Graph Metrics
+              </Button>
+            </div>
+          </section>
         </Panel>
         <div className="flex flex-col gap-5">
-          <Panel title="Start with sample data" action={<Database size={16} className="text-slate-400" />}>
-            <p className="muted mb-4">
-              Start by defining your scope, then choose the built-in retail
-              sample or connect your own source. AI suggestions can be skipped;
-              ontology review and approval remain explicit.
-            </p>
-            <Button component={Link} to={next ? stageRoutes[next.no] : "/explorer"} variant="outlined" endIcon={<ArrowRight size={15} />}>
-              {next ? "Continue workflow" : "Explore graph"}
-            </Button>
+          <Panel title="Data analysis">
+            {summary?.tables == null ? (
+              <p className="muted">
+                Extract and analyze a schema to see table statistics.
+              </p>
+            ) : (
+              <>
+                <div className="report-row">
+                  <span>Catalog tables</span>
+                  <strong>{summary.tables}</strong>
+                </div>
+                {Object.entries(summary.table_types ?? {}).map(
+                  ([type, count]) => (
+                    <div className="report-row capitalize" key={type}>
+                      <span>{type} tables</span>
+                      <strong>{count}</strong>
+                    </div>
+                  ),
+                )}
+              </>
+            )}
+            {summary?.nodes != null && (
+              <div className="report-row">
+                <span>Graph nodes</span>
+                <strong>{summary.nodes}</strong>
+              </div>
+            )}
+            {summary?.edges != null && (
+              <div className="report-row">
+                <span>Graph edges</span>
+                <strong>{summary.edges}</strong>
+              </div>
+            )}
+            {id && (
+              <Button component={Link} to="/analysis">
+                View schema analysis
+              </Button>
+            )}
           </Panel>
-          <Panel title="Workspace details">
-            <div className="report-row">
-              <span>Session</span>
-              <code className="text-[10px] break-all">{id}</code>
-            </div>
-            <div className="report-row">
-              <span>Session expires in</span>
-              <strong>{session.data?.expires_in_seconds != null ? `${session.data.expires_in_seconds} seconds` : "Unavailable"}</strong>
-            </div>
-            <p className="muted mt-3">
-              This is a temporary workflow session. Saved graph artifacts are
-              managed by the backend.
-            </p>
+          <Panel title="Created ontologies">
+            <Feedback
+              pending={savedOntologies.isLoading}
+              error={savedOntologies.error}
+            />
+            {savedOntologies.data?.map((saved) => (
+              <details
+                key={`${saved.workspace_id}/${saved.ontology_id}`}
+                className="mb-3"
+              >
+                <summary className="cursor-pointer font-semibold">
+                  {saved.name} ({saved.workspace_name})
+                </summary>
+                {saved.versions.map((version) => (
+                  <div
+                    className="report-row"
+                    key={version.version ?? "working"}
+                  >
+                    <span>
+                      {version.version === null
+                        ? "Working draft"
+                        : `Version ${version.version}`}
+                    </span>
+                    <strong>
+                      {version.status.replaceAll("_", " ")} / {version.classes}{" "}
+                      classes / {version.relationships} relationships
+                    </strong>
+                  </div>
+                ))}
+              </details>
+            ))}
+            {!ontology &&
+              !otherWorkspaces.some(
+                (workspace) => workspace.summary?.ontology,
+              ) &&
+              !publishedOntologies.length &&
+              !savedOntologies.data?.length &&
+              !savedOntologies.isLoading && (
+                <p className="muted">
+                  No workspace or published graph ontologies yet.
+                </p>
+              )}
+            {ontology && (
+              <div className="mb-3">
+                <Link
+                  className="font-semibold"
+                  to={
+                    done.includes(9)
+                      ? `/repository?ontology=${encodeURIComponent(ontology.id)}`
+                      : "/ontology"
+                  }
+                >
+                  {ontology.name}
+                </Link>
+                <p className="muted">
+                  Workspace · Version {ontology.version} ·{" "}
+                  {ontology.status.replaceAll("_", " ")}
+                </p>
+                <p className="muted">
+                  {ontology.classes} classes · {ontology.relationships}{" "}
+                  relationships
+                </p>
+              </div>
+            )}
+            {otherWorkspaces.map((workspace) => {
+              const saved = workspace.summary?.ontology;
+              return (
+                saved && (
+                  <div className="report-row items-center" key={workspace.id}>
+                    <div>
+                      <strong>{saved.name}</strong>
+                      <p className="muted">
+                        {workspace.name} · Version {saved.version} ·{" "}
+                        {saved.status.replaceAll("_", " ")}
+                      </p>
+                    </div>
+                    <Button onClick={() => openWorkspace(workspace.id)}>
+                      Open workspace
+                    </Button>
+                  </div>
+                )
+              );
+            })}
+            {publishedOntologies.map((project) => (
+              <div key={project.project_id} className="report-row">
+                <Link
+                  to={`/published-graphs?project=${encodeURIComponent(project.project_id)}`}
+                >
+                  {project.name}
+                </Link>
+                <span className="muted">
+                  {project.ontology_id} · v{project.ontology_version}
+                </span>
+              </div>
+            ))}
           </Panel>
         </div>
       </div>
