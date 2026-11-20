@@ -40,6 +40,8 @@ services:
       KG_GRAPH_ID_KEY: ${KG_GRAPH_ID_KEY:-}
       KG_GRAPH_RETENTION_DAYS: ${KG_GRAPH_RETENTION_DAYS:-30}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      KG_GRAPH_AI_ENABLED: ${KG_GRAPH_AI_ENABLED:-false}
+      KG_GRAPH_AI_MODEL: ${KG_GRAPH_AI_MODEL:-}
     volumes:
       - backend-data:/app/storage
     healthcheck:

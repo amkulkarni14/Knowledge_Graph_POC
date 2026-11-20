@@ -14,6 +14,7 @@ import {
 import type { Job, JsonObject, Schema } from "../../types/common.types";
 import { saveBlob } from "../build/StoragePage";
 import GraphCanvas from "./GraphCanvas";
+import { GraphmlImport, IntelligenceTools } from "./GraphIntelligenceTools";
 
 type GraphView = Schema<"GraphView">;
 type Project = {
@@ -50,7 +51,7 @@ type WorkspaceItem = {
   updated_at: string;
 };
 type Tool =
-  "versions" | "explorer" | "query" | "analytics" | "schema" | "operations";
+  "versions" | "explorer" | "query" | "analytics" | "schema" | "operations" | "intelligence" | "graphml";
 
 const titles: Record<Tool, string> = {
   versions: "Graph Versions",
@@ -59,6 +60,8 @@ const titles: Record<Tool, string> = {
   analytics: "Graph Analytics",
   schema: "Graph Schema",
   operations: "Graph Operations",
+  intelligence: "Graph Intelligence",
+  graphml: "GraphML Import",
 };
 
 function downloadJson(value: unknown, name: string) {
@@ -136,6 +139,7 @@ export default function PublishedGraphsPage() {
   });
   const version = params.get("version") || versions.data?.current || "";
   const versionPath = base + "/versions/" + encodeURIComponent(version);
+  const useSessionGraph = !!session && (!version || params.get("source") === "session");
   const set = (key: string, value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -237,7 +241,23 @@ export default function PublishedGraphsPage() {
           versions={versions.data}
         />
       )}
-      {tool !== "versions" &&
+      {tool === "graphml" && <GraphmlImport key={session ?? "no-session"} />}
+      {tool === "intelligence" && (
+        version || session ? (
+          <>
+            {version && session && <div className="toolbar section-gap">
+              <TextField select label="Intelligence graph source" value={useSessionGraph ? "session" : "published"}
+                onChange={(event) => set("source", event.target.value)}>
+                <MenuItem value="published">Published version</MenuItem>
+                <MenuItem value="session">Current session graph</MenuItem>
+              </TextField>
+            </div>}
+            <IntelligenceTools key={useSessionGraph ? session : versionPath} published={!useSessionGraph}
+              path={useSessionGraph ? sessionPath(session!, "/graphs") : versionPath} />
+          </>
+        ) : <Alert severity="info" className="mt-4">Build a session graph or choose a published version.</Alert>
+      )}
+      {tool !== "versions" && tool !== "graphml" && tool !== "intelligence" &&
         tool !== "operations" &&
         (version ? (
           <GraphTool
@@ -659,6 +679,23 @@ function GraphTool({
   return <VersionReport tool={tool} path={path} />;
 }
 
+function Distribution({ title, values }: { title: string; values: unknown }) {
+  if (!values || typeof values !== "object") return null;
+  const counts = Object.entries(values)
+    .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+    .sort((a, b) => b[1] - a[1]);
+  const max = counts[0]?.[1];
+  if (!max) return null;
+  return <Panel title={title}>
+    <ul className="form-stack">
+      {counts.slice(0, 12).map(([label, count]) => <li key={label}>
+        <div className="flex justify-between gap-4"><span>{label}</span><span>{count}</span></div>
+        <meter className="w-full" min={0} max={max} value={count} aria-label={label} />
+      </li>)}
+    </ul>
+  </Panel>;
+}
+
 function VersionReport({ tool, path }: { tool: Tool; path: string }) {
   const report = useQuery({
     queryKey: ["graph-report", path, tool],
@@ -719,6 +756,8 @@ function VersionReport({ tool, path }: { tool: Tool; path: string }) {
           Download analytics
         </Button>
       </Panel>
+      <Distribution title="Nodes by label" values={report.data?.node_labels} />
+      <Distribution title="Relationships by type" values={report.data?.relationship_types} />
       <Panel title="Node rankings">
         <TextField
           select

@@ -52,6 +52,8 @@ def register(db, session, actor, version, ctx, analytics, started_at):
     graph = ctx.graph
     onto = ctx.approved_ontology
     validation = {key: len(ctx.graph_report[key]) for key in ("errors", "warnings")}
+    source_id = (f"graphml:{graph.graph['import_digest']}" if graph.graph.get("import_origin") == "graphml"
+                 else f"{session.id}:{session.source_version}")
     db.execute("""
         INSERT INTO kg_meta.graph_build
             (build_id, project_id, actor, ontology_id, ontology_version, mode, status,
@@ -60,7 +62,7 @@ def register(db, session, actor, version, ctx, analytics, started_at):
         """, (version, session.id, actor, onto.ontology_id, onto.version, graph.graph.get("build_mode", "full"),
               Jsonb(graph.graph.get("source_watermarks", {})), graph.number_of_nodes(), graph.number_of_edges(),
               Jsonb(validation), len(ctx.build_stats.get("quarantine", [])),
-              f"{session.id}:{session.source_version}", Jsonb(analytics), started_at))
+              source_id, Jsonb(analytics), started_at))
 
 
 def event(db, project, version, actor, action):

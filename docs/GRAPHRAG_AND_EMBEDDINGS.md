@@ -1,0 +1,5 @@
+﻿# GraphRAG and embeddings
+
+Select a published version and **GraphRAG** in Graph Intelligence. Enter an anchor node ID and a question. The retriever obtains a scoped two-hop neighborhood and passes up to 40 relationship triples to the opt-in provider. The response displays separately numbered source facts and a graph visualization. Citation numbers are checked against retrieved evidence. Citation validation verifies index references. Semantic faithfulness still requires review.
+
+The structural embedding is a deterministic 16-dimensional hashed representation of node and neighbor-label counts in the retrieved sample. The UI lists similar candidates by cosine similarity. No vector database or GDS dependency is needed. Whole-version persisted embeddings, semantic or vector indexes, automatic entity linking, separate source-document retrieval and embedding evaluation remain open. The application sends graph identifiers and types when AI is enabled. Review organizational data policies before enabling the feature.

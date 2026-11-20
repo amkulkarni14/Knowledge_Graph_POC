@@ -89,10 +89,10 @@ describe("published graph workspace", () => {
       duration_ms: 12,
     });
     open("query");
-    await user.type(
+    await user.click(
       await screen.findByRole("textbox", { name: "Cypher statement" }),
-      cypher,
     );
+    await user.paste(cypher);
     await user.click(screen.getByRole("button", { name: "Run query" }));
     await waitFor(() =>
       expect(send).toHaveBeenCalledWith("POST", path + "/query", { cypher }),

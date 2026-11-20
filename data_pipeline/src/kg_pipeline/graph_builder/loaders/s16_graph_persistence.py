@@ -40,7 +40,12 @@ def _sha256(path: Path) -> str:
 
 def _graphml_safe(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     """GraphML stores scalars only: lists/dicts become JSON strings, None is dropped."""
-    H = G.copy()
+    H = nx.MultiDiGraph()
+    H.graph.update(G.graph)
+    H.add_nodes_from(G.nodes(data=True))
+    for index, (source, target, key, properties) in enumerate(G.edges(keys=True, data=True)):
+        edge = {**properties, "_kg_edge_key": str(key)}
+        H.add_edge(source, target, key=f"e{index}", **edge)
 
     def fix(d):
         for k, v in list(d.items()):

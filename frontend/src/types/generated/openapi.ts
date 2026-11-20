@@ -789,6 +789,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/graphs/graphml/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Graphml */
+        post: operations["preview_graphml_api_v1_sessions__session_id__graphs_graphml_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/graphml/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Graphml */
+        post: operations["publish_graphml_api_v1_sessions__session_id__graphs_graphml_publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/intelligence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Local Intelligence */
+        get: operations["local_intelligence_api_v1_sessions__session_id__graphs_intelligence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/graphml/neighborhood": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Local Neighborhood Graphml */
+        get: operations["local_neighborhood_graphml_api_v1_sessions__session_id__graphs_graphml_neighborhood_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/graphs/snapshots": {
         parameters: {
             query?: never;
@@ -1168,6 +1236,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/graph-projects/{project}/versions/{version}/query-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Query Draft */
+        post: operations["query_draft_api_v1_graph_projects__project__versions__version__query_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph-projects/{project}/versions/{version}/intelligence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intelligence */
+        get: operations["intelligence_api_v1_graph_projects__project__versions__version__intelligence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph-projects/{project}/versions/{version}/graphml/neighborhood": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Neighborhood Graphml */
+        get: operations["neighborhood_graphml_api_v1_graph_projects__project__versions__version__graphml_neighborhood_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph-projects/{project}/versions/{version}/graph-rag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Graph Rag */
+        post: operations["graph_rag_api_v1_graph_projects__project__versions__version__graph_rag_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph-projects/{project}/versions/{version}/investigate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Investigation */
+        post: operations["investigation_api_v1_graph_projects__project__versions__version__investigate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/graph-projects/{project}/versions/{version}/paths": {
         parameters: {
             query?: never;
@@ -1227,6 +1380,13 @@ export interface components {
         ActorRequest: {
             /** Actor */
             actor: string;
+        };
+        /** AnchoredQuestion */
+        AnchoredQuestion: {
+            /** Question */
+            question: string;
+            /** Node Id */
+            node_id: string;
         };
         /** ApiAttribute */
         ApiAttribute: {
@@ -1418,6 +1578,36 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** Body_preview_graphml_api_v1_sessions__session_id__graphs_graphml_preview_post */
+        Body_preview_graphml_api_v1_sessions__session_id__graphs_graphml_preview_post: {
+            /** File */
+            file: string;
+            /**
+             * Label Key
+             * @default label
+             */
+            label_key: string;
+            /**
+             * Relationship Key
+             * @default type
+             */
+            relationship_key: string;
+        };
+        /** Body_publish_graphml_api_v1_sessions__session_id__graphs_graphml_publish_post */
+        Body_publish_graphml_api_v1_sessions__session_id__graphs_graphml_publish_post: {
+            /** File */
+            file: string;
+            /**
+             * Label Key
+             * @default label
+             */
+            label_key: string;
+            /**
+             * Relationship Key
+             * @default type
+             */
+            relationship_key: string;
+        };
         /** BuildRequest */
         BuildRequest: {
             /**
@@ -1570,6 +1760,11 @@ export interface components {
             properties: {
                 [key: string]: unknown;
             };
+        };
+        /** GraphQuestion */
+        GraphQuestion: {
+            /** Question */
+            question: string;
         };
         /** GraphView */
         GraphView: {
@@ -3801,6 +3996,143 @@ export interface operations {
             };
         };
     };
+    preview_graphml_api_v1_sessions__session_id__graphs_graphml_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_preview_graphml_api_v1_sessions__session_id__graphs_graphml_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_graphml_api_v1_sessions__session_id__graphs_graphml_publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_publish_graphml_api_v1_sessions__session_id__graphs_graphml_publish_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_intelligence_api_v1_sessions__session_id__graphs_intelligence_get: {
+        parameters: {
+            query: {
+                node_id: string;
+                target_label?: string;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    local_neighborhood_graphml_api_v1_sessions__session_id__graphs_graphml_neighborhood_get: {
+        parameters: {
+            query: {
+                node_id: string;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     snapshots_api_v1_sessions__session_id__graphs_snapshots_get: {
         parameters: {
             query: {
@@ -4708,6 +5040,183 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    query_draft_api_v1_graph_projects__project__versions__version__query_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphQuestion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intelligence_api_v1_graph_projects__project__versions__version__intelligence_get: {
+        parameters: {
+            query: {
+                node_id: string;
+                target_label?: string;
+            };
+            header?: never;
+            path: {
+                project: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    neighborhood_graphml_api_v1_graph_projects__project__versions__version__graphml_neighborhood_get: {
+        parameters: {
+            query: {
+                node_id: string;
+            };
+            header?: never;
+            path: {
+                project: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_rag_api_v1_graph_projects__project__versions__version__graph_rag_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnchoredQuestion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    investigation_api_v1_graph_projects__project__versions__version__investigate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnchoredQuestion"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

@@ -1,7 +1,7 @@
 """Compile a small read-only Cypher grammar to server-owned scoped statements.
 
 Accepted statements match one labelled node or one directed typed relationship.
-Projections select declared variables or count(variable). A row limit is optional.
+Projections select declared variables, their properties, or counts. An alias and row limit are optional.
 """
 from dataclasses import dataclass
 import re
@@ -17,7 +17,11 @@ PATTERN = re.compile(
     rf"\s*RETURN\s+(?P<projection>.+?)(?:\s+LIMIT\s+(?P<limit>[0-9]{{1,6}}))?\s*;?",
     re.IGNORECASE,
 )
-PROJECTION = re.compile(rf"(?:(?P<variable>{NAME})|count\(\s*(?P<counted>{NAME})\s*\))", re.IGNORECASE)
+PROJECTION = re.compile(
+    rf"(?:(?P<variable>{NAME})(?:\s*\.\s*(?P<property>{NAME}))?"
+    rf"|count\(\s*(?P<counted>{NAME}|\*)\s*\))(?:\s+AS\s+(?P<output>{NAME}))?",
+    re.IGNORECASE,
+)
 
 NODE_MAP = "{id: %(alias)s.id, properties: properties(%(alias)s)}"
 EDGE_MAP = "{source: {id: a.id, properties: properties(a)}, target: {id: b.id, properties: properties(b)}, " \
@@ -51,14 +55,23 @@ def compile_query(text):
     columns = []
     for projection in data["projection"].split(","):
         item = PROJECTION.fullmatch(projection.strip())
-        if not item or (item["variable"] or item["counted"]) not in aliases:
-            raise ApiError(422, "unsupported_cypher_projection", "Return only declared variables or count(variable)")
-        alias = aliases[item["variable"] or item["counted"]]
-        if item["counted"]:
+        variable = (item["variable"] or item["counted"]) if item else None
+        if not item or (variable != "*" and variable not in aliases):
+            raise ApiError(422, "unsupported_cypher_projection",
+                           "Return declared variables, their properties, count(variable), or count(*). AS aliases are supported")
+        alias = aliases.get(variable)
+        if variable == "*":
+            expression, column = "count(*)", "count(*)"
+        elif item["counted"]:
             expression, column = f"count({alias})", f"count({item['counted']})"
+        elif item["property"]:
+            parameter = f"field{len(columns)}"
+            parameters[parameter] = item["property"]
+            expression, column = f"{alias}[${parameter}]", f"{variable}.{item['property']}"
         else:
             expression = EDGE_MAP if alias == "r" else NODE_MAP % {"alias": alias}
-            column = item["variable"]
+            column = variable
+        column = item["output"] or column
         if column in columns:
             raise ApiError(422, "duplicate_cypher_column", "Return each column once")
         expressions.append(f"{expression} AS value{len(columns)}")

@@ -42,4 +42,11 @@ test("opens a live Neo4j graph, expands an entity, and visualizes a scoped query
   await expect(
     page.getByRole("img", { name: /Knowledge graph with 1 visible nodes/ }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "Graph Intelligence", exact: true }).click();
+  await page.getByRole("textbox", { name: "Anchor node ID" }).fill("Order:1001");
+  await page.getByRole("button", { name: "Analyze neighborhood" }).click();
+  await expect(page.getByRole("heading", { name: "Candidate links" })).toBeVisible();
+  const file = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export neighborhood GraphML" }).click();
+  expect((await file).suggestedFilename()).toBe("neighborhood.graphml");
 });

@@ -74,6 +74,8 @@ const publishedTools = [
   { view: "analytics", label: "Graph Analytics", icon: ChartNoAxesCombined },
   { view: "schema", label: "Graph Schema", icon: Shapes },
   { view: "operations", label: "Graph Operations", icon: Activity },
+  { view: "intelligence", label: "Graph Intelligence", icon: Sparkles },
+  { view: "graphml", label: "GraphML Import", icon: HardDrive },
 ];
 
 function titleForRoute(pathname: string) {

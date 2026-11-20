@@ -87,15 +87,17 @@ def private_identifiers(ctx):
 
     def edge_key(key, props):
         kind = props.get("type")
-        if (kind, props.get("source_table")) in edge_types:
+        if ((kind, props.get("source_table")) in edge_types
+                or ctx.graph.graph.get("import_origin") == "graphml"
+                and any(relation_type == kind for relation_type, _ in edge_types)):
             return f'{kind}:private:{token("relationship", key)}'
         return str(key)
 
     return node_ids, edge_key
 
 
-def persist(session, actor, version, report, commit, started_at=None):
-    ctx = session.ctx
+def persist(session, actor, version, report, commit, started_at=None, *, context=None):
+    ctx = context if context is not None else session.ctx
     if not ctx.graph_report or not ctx.graph_report["ok"] or ctx.approved_ontology is None:
         raise ApiError(409, "invalid_graph", "Graph and approved ontology must pass validation")
     report("analytics", 0)
@@ -122,13 +124,13 @@ def persist(session, actor, version, report, commit, started_at=None):
     with versions.publication_guard(version):
         with versions.registry() as db:
             versions.register(db, session, actor, version, ctx, analytics, started_at)
-        import_and_publish(session, actor, version, report, commit, hidden, node_ids, edge_key)
+        import_and_publish(session, actor, version, report, commit, hidden, node_ids, edge_key, ctx.graph)
     ctx.snapshot = {"build_id": version, "ontology_id": ctx.approved_ontology.ontology_id,
                     "published": True, "storage": "neo4j"}
     ctx.mark_done(16)
 
 
-def import_and_publish(session, actor, version, report, commit, hidden, node_ids, edge_key):
+def import_and_publish(session, actor, version, report, commit, hidden, node_ids, edge_key, graph):
     try:
         for attempt in range(3):
             totals = {"nodes": 0, "relationships": 0}
@@ -139,7 +141,7 @@ def import_and_publish(session, actor, version, report, commit, hidden, node_ids
 
             try:
                 with NeoGraphStore() as store:
-                    store.import_graph(session.ctx.graph, session.id, version, hidden, progress,
+                    store.import_graph(graph, session.id, version, hidden, progress,
                                        node_ids=node_ids, edge_key=edge_key)
                 break
             except (TransientError, ServiceUnavailable, SessionExpired):

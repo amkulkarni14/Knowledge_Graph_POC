@@ -15,7 +15,8 @@ from backend.app.dto.models import BuildRequest, Result, StrictModel
 from backend.app.exceptions.handlers import ApiError
 from backend.app.repositories import graph_versions as registry
 from backend.app.services.cypher_subset import compile_query
-from backend.app.services.graph_exports import CONTENT_TYPES, stream_graph
+from backend.app.services.graph_exports import CONTENT_TYPES, graphml_response, stream_graph
+from backend.app.services.graph_intelligence import draft_query, grounded_answer, structural_insights
 from backend.app.services.neo_graph import EDGE_MATCH, NODE_MATCH, NeoGraphStore
 
 router = APIRouter(tags=["graph versions"])
@@ -94,6 +95,14 @@ class WorkspaceItem(StrictModel):
 
 class CypherRequest(StrictModel):
     cypher: str = Field(min_length=1, max_length=2000)
+
+
+class GraphQuestion(StrictModel):
+    question: str = Field(min_length=1, max_length=1000)
+
+
+class AnchoredQuestion(GraphQuestion):
+    node_id: str = Field(min_length=1, max_length=300)
 
 
 class MemberRequest(StrictModel):
@@ -391,6 +400,66 @@ def graph_view(metadata, paths, limit, root=()):
     return {"nodes": list(nodes.values()), "edges": list(edges.values()),
             "total_nodes": metadata["node_count"], "total_edges": metadata["edge_count"],
             "truncated": len(paths) > limit}
+
+
+@router.post(TOOLS + "/query-draft", response_model=Result[dict])
+def query_draft(project: UUID, version: UUID, user: CurrentUser, body: GraphQuestion):
+    resolve(project, version, user)
+    labels = read_graph(project, str(version), TEMPLATES["labels"], limit=60)
+    types = read_graph(project, str(version), TEMPLATES["types"], limit=60)
+    text = draft_query(body.question, {"labels": labels, "relationship_directions": types})
+    return {"data": {"cypher": text, "requires_confirmation": True}}
+
+
+@router.get(TOOLS + "/intelligence", response_model=Result[dict])
+def intelligence(project: UUID, version: UUID, user: CurrentUser,
+                 node_id: str = Query(min_length=1, max_length=300),
+                 target_label: str = Query("", max_length=63)):
+    view = neighborhood(project, version, user, node_id=node_id, hops=2, kind="", limit=100)["data"]
+    return {"data": structural_insights(view, node_id, target_label)}
+
+
+@router.get(TOOLS + "/graphml/neighborhood")
+def neighborhood_graphml(project: UUID, version: UUID, user: CurrentUser,
+                         node_id: str = Query(min_length=1, max_length=300)):
+    view = neighborhood(project, version, user, node_id=node_id, hops=2, kind="", limit=100)["data"]
+    return graphml_response(view)
+
+
+def investigate(project, version, user, body, include_rankings=False):
+    view = neighborhood(project, version, user, node_id=body.node_id, hops=2, kind="", limit=60)["data"]
+    analysis = structural_insights(view, body.node_id) if include_rankings else None
+    evidence_edges = view["edges"][:40]
+    evidence = [{"source": edge["source"], "relationship": edge["properties"].get("type", "Relationship"),
+                 "target": edge["target"]} for edge in evidence_edges]
+    result = grounded_answer(body.question, evidence)
+    by_id = {node["id"]: node["properties"] for node in view["nodes"]}
+    for fact, edge in zip(result["evidence"], evidence_edges):
+        fact["source_table"] = edge["properties"].get("source_table")
+        fact["source_record"] = by_id.get(fact["source"], {}).get("source_key")
+        fact["target_record"] = by_id.get(fact["target"], {}).get("source_key")
+    result["graph"] = view
+    if include_rankings:
+        result["analysis"] = analysis
+        result["trace"] = [
+            {"tool": "explore_neighborhood", "status": "completed", "nodes": len(view["nodes"])},
+            {"tool": "rank_structural_candidates", "status": "completed"},
+            {"tool": "answer_from_graph_evidence", "status": "completed", "facts": len(evidence)},
+        ]
+        with registry.registry() as db:
+            save_item(db, project, str(version), user.username, "query_run", str(uuid4()),
+                      {"template": "graph_investigation", "steps": len(result["trace"]), "facts": len(evidence)})
+    return {"data": result}
+
+
+@router.post(TOOLS + "/graph-rag", response_model=Result[dict])
+def graph_rag(project: UUID, version: UUID, user: CurrentUser, body: AnchoredQuestion):
+    return investigate(project, version, user, body)
+
+
+@router.post(TOOLS + "/investigate", response_model=Result[dict])
+def investigation(project: UUID, version: UUID, user: CurrentUser, body: AnchoredQuestion):
+    return investigate(project, version, user, body, include_rankings=True)
 
 
 @router.get(TOOLS + "/paths", response_model=Result[dict])

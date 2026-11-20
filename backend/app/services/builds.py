@@ -1,5 +1,6 @@
 """Bounded in-process build execution with pollable status."""
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import datetime, timezone
 from threading import BoundedSemaphore
 from time import monotonic
@@ -8,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services.workflow import STAGE_FUNCTIONS, execute, require, rules_for
 from backend.app.services.graph_publication import persist
+from backend.app.services.graphml_import import read_graphml
 
 
 def stage_result(session, stage):
@@ -60,6 +62,9 @@ class BuildRunner:
     def start_publication(self, session, actor):
         return self._submit(session, None, actor)
 
+    def start_graphml(self, session, actor, upload):
+        return self._submit(session, None, actor, graphml=upload)
+
     def cancel(self, session, job_id):
         with session.status_lock:
             job = session.job
@@ -76,12 +81,14 @@ class BuildRunner:
         if session.job["status"] == "cancelling":
             raise ApiError(409, "build_cancelled", "Build was cancelled")
 
-    def _submit(self, session, body, actor):
+    def _submit(self, session, body, actor, *, graphml=None):
         if not session.lock.acquire(blocking=False):
             raise ApiError(409, "session_busy", "Wait for the current operation")
         acquired = False
         try:
-            if body is None:
+            if graphml is not None:
+                require(session, 9)
+            elif body is None:
                 require(session, 9, 14, 15)
             else:
                 require(session, 3, 9)
@@ -94,7 +101,7 @@ class BuildRunner:
                 session.job = {"id": str(uuid4()), "status": "queued", "stage": None, "progress": None,
                                "error": None, "started_at": started_at.isoformat()}
                 initial = dict(session.job)
-            self.pool.submit(self._run, session, body, actor, initial["id"], started_at)
+            self.pool.submit(self._run, session, body, actor, initial["id"], started_at, graphml)
             return initial
         except Exception:
             if acquired:
@@ -102,7 +109,7 @@ class BuildRunner:
             session.lock.release()
             raise
 
-    def _run(self, session, body, actor, version, started_at):
+    def _run(self, session, body, actor, version, started_at, graphml=None):
         try:
             for stage in range(10, 16) if body is not None else ():
                 with session.status_lock:
@@ -126,7 +133,16 @@ class BuildRunner:
                             self._check_cancelled(session)
                             session.job["status"] = "publishing"
 
-                    persist(session, actor, version, report, commit, started_at)
+                    if graphml is None:
+                        persist(session, actor, version, report, commit, started_at)
+                    else:
+                        report("validate_graphml", 0)
+                        payload, label_key, relationship_key = graphml
+                        graph = read_graphml(payload, session.ctx.approved_ontology, label_key, relationship_key)
+                        context = replace(session.ctx, graph=graph, completed=set(session.ctx.completed),
+                                          graph_report={"ok": True, "errors": [], "warnings": []},
+                                          build_stats={"quarantine": []})
+                        persist(session, actor, version, report, commit, started_at, context=context)
                 with session.status_lock:
                     self._check_cancelled(session)
                     session.job["status"] = "completed"

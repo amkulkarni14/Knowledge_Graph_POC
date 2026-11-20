@@ -1,5 +1,5 @@
 from typing import Literal
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, File, Form, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 import networkx as nx
 from kg_pipeline.graph_builder.loaders import s16_graph_persistence as persistence
@@ -7,9 +7,54 @@ from backend.app.core.dependencies import CurrentSession, CurrentUser
 from backend.app.dto.models import Result, GraphView, Page, SnapshotRequest, Identifier, BuildId
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services import graphs as service
+from backend.app.services.graph_intelligence import structural_insights
+from backend.app.services.graph_exports import graphml_response
+from backend.app.services.graphml_import import MAX_GRAPHML_BYTES, read_graphml, summarize
 from backend.app.services.workflow import execute, operation, require
 
 router = APIRouter(prefix="/sessions/{session_id}/graphs", tags=["graphs"])
+
+
+def graphml_upload(file, label_key, relationship_key):
+    payload = file.file.read(MAX_GRAPHML_BYTES + 1)
+    if len(payload) > MAX_GRAPHML_BYTES:
+        raise ApiError(413, "graphml_too_large", "GraphML uploads are limited to 4 MiB")
+    return payload, label_key, relationship_key
+
+
+@router.post("/graphml/preview", response_model=Result[dict])
+def preview_graphml(session: CurrentSession, file: UploadFile = File(),
+                    label_key: str = Form("label", min_length=1, max_length=63),
+                    relationship_key: str = Form("type", min_length=1, max_length=63)):
+    payload, label_key, relationship_key = graphml_upload(file, label_key, relationship_key)
+    with operation(session):
+        require(session, 9)
+        graph = read_graphml(payload, session.ctx.approved_ontology, label_key, relationship_key)
+        return {"data": {"project": session.name, **summarize(graph)}}
+
+
+@router.post("/graphml/publish", status_code=202, response_model=Result[dict])
+def publish_graphml(session: CurrentSession, user: CurrentUser, request: Request, file: UploadFile = File(),
+                    label_key: str = Form("label", min_length=1, max_length=63),
+                    relationship_key: str = Form("type", min_length=1, max_length=63)):
+    upload = graphml_upload(file, label_key, relationship_key)
+    return {"data": request.app.state.builds.start_graphml(session, user.username, upload)}
+
+
+@router.get("/intelligence", response_model=Result[dict])
+def local_intelligence(session: CurrentSession, node_id: str = Query(min_length=1, max_length=300),
+                       target_label: str = Query("", max_length=63)):
+    with operation(session):
+        graph = service.select_graph(session)
+        view = service.graph_view(session, graph, limit=160, edge_limit=200, focus=node_id, hops=2)
+        return {"data": structural_insights(view, node_id, target_label)}
+
+
+@router.get("/graphml/neighborhood")
+def local_neighborhood_graphml(session: CurrentSession, node_id: str = Query(min_length=1, max_length=300)):
+    with operation(session):
+        graph = service.select_graph(session)
+        return graphml_response(service.graph_view(session, graph, limit=160, edge_limit=200, focus=node_id, hops=2))
 
 
 @router.post("/snapshots", response_model=Result[dict],

@@ -96,10 +96,20 @@ def test_cypher_compiles_external_labels_and_relationship_type_to_parameters():
     "MATCH (c:Customer) DETACH DELETE c RETURN c",
     "MATCH (c:Customer) RETURN c UNION MATCH (x) RETURN x",
     "CALL db.labels()",
-    "MATCH (c:Customer) RETURN c.name",
+    "MATCH (c:Customer) RETURN c.name + 1",
+    "MATCH (c:Customer) RETURN x.name AS name",
+    "MATCH (c:Customer) RETURN properties(c)",
     "MATCH (c:Customer) RETURN x",
 ])
 def test_cypher_rejects_statements_outside_the_grammar(statement):
     with pytest.raises(ApiError) as failure:
         compile_query(statement)
     assert failure.value.status == 422
+
+
+def test_cypher_compiles_properties_and_counts_without_interpolating_user_identifiers():
+    query = compile_query("MATCH (c:Customer) RETURN c.name AS customer, count(*) AS total")
+    assert query.columns == ["customer", "total"]
+    assert query.parameters["field0"] == "name"
+    assert "n[$field0] AS value0, count(*) AS value1" in query.statement
+    assert "customer" not in query.statement

@@ -92,6 +92,20 @@ def test_source_to_published_versions(tmp_path, monkeypatch, source_order):
         assert [row["id"] for row in filtered] == [root]
         schema = ok(client.get(version + "/schema"))
         assert schema["labels"] and schema["types"]
+        from backend.app.services import graph_intelligence
+        with monkeypatch.context() as injected:
+            def fixture_provider(_, payload):
+                if "schema" in payload:
+                    return {"cypher": "MATCH (o:Order) RETURN o LIMIT 1"}
+                assert payload["facts"] and "source_record" not in payload["facts"][0]
+                return {"answer": "The anchor has a relationship in the retrieved sample.", "citations": [1, 9999]}
+
+            injected.setattr(graph_intelligence, "model_completion", fixture_provider)
+            draft = ok(client.post(version + "/query-draft", json={"question": "List an order"}))
+            assert draft["requires_confirmation"]
+            result = ok(client.post(version + "/investigate", json={"question": "What is connected?", "node_id": root}))
+            assert result["citations"] == [1] and len(result["trace"]) == 3
+            assert "source_table" in result["evidence"][0]
         target = next(node["id"] for node in graph["nodes"] if node["id"] != root)
         assert ok(client.get(version + "/paths", params={"source": root, "target": target}))["edges"]
         export = client.get(version + "/export/json")
@@ -110,6 +124,7 @@ def test_source_to_published_versions(tmp_path, monkeypatch, source_order):
             token = client.post("/api/v1/login", json={"username": viewer, "password": password}).json()["access_token"]
             viewer_headers = {"Authorization": f"Bearer {token}"}
             assert client.get(base, headers=viewer_headers).status_code == 404
+            assert client.post(version + "/query-draft", json={"question": "List orders"}, headers=viewer_headers).status_code == 404
             ok(client.put(project_path + "/members", json={"username": viewer}))
             assert not ok(client.get(base, headers=viewer_headers))["can_manage"]
             assert client.get(version + "/analytics", headers=viewer_headers).status_code == 200
@@ -168,3 +183,18 @@ def test_source_to_published_versions(tmp_path, monkeypatch, source_order):
         ok(client.delete(f"{base}/{second}"), 202)
         assert any(row["build_id"] == second and row["status"] == "deleted"
                    for row in ok(client.get(base))["versions"])
+        snapshot = ok(client.post(session + "/graphs/snapshots", json={}))
+        local_graphml = client.get(session + f"/graphs/snapshots/{snapshot['build_id']}/download/graph.graphml",
+                                   params={"ontology_id": snapshot["ontology_id"]})
+        assert local_graphml.status_code == 200
+        upload = {"file": ("roundtrip.graphml", local_graphml.content, "application/xml")}
+        preview = ok(client.post(session + "/graphs/graphml/preview", files=upload))
+        assert preview["nodes"] == snapshot["nodes"]
+        imported = ok(client.post(session + "/graphs/graphml/publish", files=upload), 202)["id"]
+        assert terminal(client, session)["status"] == "completed"
+        assert ok(client.get(base))["current"] == imported
+        retained = next(row["id"] for row in rows if row["id"] != f"Order:{source_order}")
+        report = ok(client.get(f"{base}/{imported}/intelligence", params={"node_id": retained}))
+        assert len(report["embedding"]) == 16
+        assert client.get(version + "/graphml/neighborhood", params={"node_id": root}).status_code == 200
+        assert client.get(version + "/analytics").status_code == 200

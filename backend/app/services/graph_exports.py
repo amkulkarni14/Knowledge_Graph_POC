@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 from xml.sax.saxutils import escape
+from fastapi.responses import StreamingResponse
 
 from backend.app.services.neo_graph import EDGE_MATCH, NODE_MATCH, NeoGraphStore
 
@@ -46,6 +47,21 @@ def csv_rows(rows, header):
         yield line.getvalue()
 
 
+def graphml_rows(nodes, edges):
+    yield ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<graphml xmlns="http://graphml.graphdrawing.org/xmlns">'
+           '<key id="properties" for="all" attr.name="properties" attr.type="string"/>'
+           '<graph edgedefault="directed">')
+    for node in nodes:
+        data = escape(json.dumps(node))
+        yield f'<node id="{xml_id(node["id"])}"><data key="properties">{data}</data></node>'
+    for index, edge in enumerate(edges):
+        data = escape(json.dumps(edge))
+        yield (f'<edge id="e{index}" source="{xml_id(edge["source"])}" target="{xml_id(edge["target"])}">'
+               f'<data key="properties">{data}</data></edge>')
+    yield "</graph></graphml>"
+
+
 def stream_graph(project, version, format_name):
     with NeoGraphStore(read=True) as store:
         if format_name == "nodes.csv":
@@ -60,15 +76,10 @@ def stream_graph(project, version, format_name):
             yield from json_rows(store.records(EDGE_ROWS, project, version, timeout=60))
             yield "]}"
         else:
-            yield ('<?xml version="1.0" encoding="UTF-8"?>'
-                   '<graphml xmlns="http://graphml.graphdrawing.org/xmlns">'
-                   '<key id="properties" for="all" attr.name="properties" attr.type="string"/>'
-                   '<graph edgedefault="directed">')
-            for node in store.records(NODE_ROWS, project, version, timeout=60):
-                data = escape(json.dumps(node))
-                yield f'<node id="{xml_id(node["id"])}"><data key="properties">{data}</data></node>'
-            for index, edge in enumerate(store.records(EDGE_ROWS, project, version, timeout=60)):
-                data = escape(json.dumps(edge))
-                yield (f'<edge id="e{index}" source="{xml_id(edge["source"])}" target="{xml_id(edge["target"])}">'
-                       f'<data key="properties">{data}</data></edge>')
-            yield "</graph></graphml>"
+            yield from graphml_rows(store.records(NODE_ROWS, project, version, timeout=60),
+                                    store.records(EDGE_ROWS, project, version, timeout=60))
+
+
+def graphml_response(view):
+    return StreamingResponse(graphml_rows(view["nodes"], view["edges"]), media_type=CONTENT_TYPES["graphml"],
+                             headers={"Content-Disposition": 'attachment; filename="neighborhood.graphml"'})
