@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useState } from "react";
 import {
   Button,
@@ -131,7 +130,7 @@ function PostgresForm() {
   );
 }
 export default function SourcesPage() {
-  const { id, done } = useWorkspace();
+  const { id } = useWorkspace();
   const [mode, setMode] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
@@ -220,11 +219,6 @@ export default function SourcesPage() {
         <Panel title="Connected source">
           <Feedback pending={source.isFetching} error={source.error} />
           <Report value={source.data} />
-          {done.includes(2) && !done.includes(1) && (
-            <Button component={Link} to="/scope" variant="outlined">
-              Continue to Goal &amp; Scope
-            </Button>
-          )}
         </Panel>
       </div>
     </>

@@ -32,6 +32,9 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await expect(
     page.getByRole("heading", { name: "Data Sources" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue to Goal & Scope" }),
+  ).toBeDisabled();
   await expect(page.getByRole("tab")).toHaveText(["CSV upload", "PostgreSQL"]);
   await page
     .getByLabel("Choose source files")
@@ -50,6 +53,8 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await expect(
     page.getByRole("link", { name: "Continue to Goal & Scope" }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "Continue to Goal & Scope" }).click();
+  await expect(page.getByRole("heading", { name: "Define your scope" })).toBeVisible();
   await page.getByRole("link", { name: "Home", exact: true }).click();
   await expect(
     page.getByRole("progressbar", { name: "Workflow completion" }),
@@ -120,7 +125,7 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await page.getByRole("button", { name: "Run full build" }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(
-    page.getByRole("link", { name: "Continue to snapshot storage" }),
+    page.getByRole("link", { name: "Go to Storage & Snapshots" }),
   ).toBeVisible({ timeout: 60000 });
   for (const title of [
     "Data Extraction",

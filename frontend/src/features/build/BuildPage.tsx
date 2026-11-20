@@ -276,9 +276,9 @@ function BuildPage() {
                 report before continuing.
               </Alert>
             )}
-            {status.data?.status === "completed" && (
+            {stage !== 15 && status.data?.status === "completed" && (
               <Button component={Link} to="/storage">
-                Continue to snapshot storage
+                Go to Storage &amp; Snapshots
               </Button>
             )}
           </Panel>

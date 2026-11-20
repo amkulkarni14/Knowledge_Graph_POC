@@ -62,3 +62,11 @@ export const stageOrder = stageGroups.flatMap(({ numbers }) => numbers);
 export function stagePosition(stage: number) {
   return stageOrder.indexOf(stage) + 1;
 }
+
+export function stageForPath(pathname: string) {
+  return stageOrder.find(
+    (stage) =>
+      stageRoutes[stage] === pathname ||
+      (stage === 10 && pathname === "/build"),
+  );
+}

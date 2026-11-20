@@ -34,6 +34,7 @@ import { stageGroups, stageRoutes } from "../../constants/stages.constants";
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
 import { stageNavigation } from "../../constants/stageNavigation";
+import { StageContinuation } from "./StageContinuation";
 import { StageStepper } from "./StageStepper";
 
 const publishedTools = [
@@ -348,6 +349,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Alert>
           )}
           {children}
+          {id && session.data && <StageContinuation workspace={session.data} />}
         </main>
         {activity && (
           <section className="activity-panel" aria-label="Activity log">
