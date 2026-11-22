@@ -149,16 +149,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         className={`sidebar ${collapsed ? "collapsed" : ""}`}
         aria-label="Main navigation"
       >
-        <div className="brand" title="Knowledge Graph Enterprise Studio">
+        <div className="brand" title="Knowledge Graph Studio">
           <Network size={27} />
-          {!collapsed && (
-            <span className="brand-name">
-              Knowledge Graph
-              <span className="block text-[10px] font-normal tracking-widest mt-1">
-                ENTERPRISE STUDIO
-              </span>
-            </span>
-          )}
+          {!collapsed && <span className="brand-name">Knowledge Graph Studio</span>}
         </div>
         <nav className="sidebar-nav">
           {!collapsed && <div className="nav-group">Workspace</div>}

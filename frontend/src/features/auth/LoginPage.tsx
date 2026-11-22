@@ -44,10 +44,7 @@ export function LoginPage() {
       <form className="login-card" onSubmit={submit} noValidate>
         <div className="login-brand">
           <Network size={30} />
-          <div>
-            <div className="login-title">Knowledge Graph</div>
-            <div className="login-subtitle">ENTERPRISE STUDIO</div>
-          </div>
+          <div className="login-title">Knowledge Graph Studio</div>
         </div>
         <h1 className="login-heading">Sign in</h1>
         <p className="login-help">Enter your credentials to open the workspace.</p>
