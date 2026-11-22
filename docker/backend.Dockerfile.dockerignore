@@ -1,5 +1,4 @@
 **
-!requirements.txt
 !backend/
 backend/*
 !backend/requirements.txt
