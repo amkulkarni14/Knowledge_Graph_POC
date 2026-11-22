@@ -296,10 +296,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             {id && adviceStage && <StageHelp key={`${id}/${adviceStage}`} id={id} stage={adviceStage} />}
             {id && <span className="workspace-badge" title={session.data?.name}>{session.data?.name ?? "Loading workspace…"}</span>}
             <span className="topbar-divider" />
-            <span className="connection-row" aria-label={health.data ? "API connected" : health.isError ? "API disconnected" : "Checking API connection"}>
-              <span className={`connection-dot ${health.isError ? "disconnected" : health.data ? "connected" : ""}`} />
-              <span className="footer-label">{health.isError ? "API offline" : health.data ? "API connected" : "Connecting"}</span>
-            </span>
             {docs && <a className="icon-button" href={docs} target="_blank" rel="noreferrer" aria-label="API documentation" title="API documentation"><BookOpen size={16} /></a>}
             <button
               className="icon-button"

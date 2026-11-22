@@ -984,14 +984,6 @@
     background: transparent;
     cursor: pointer;
   }
-  .topbar-right .connection-row {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--muted);
-    font-size: 10px;
-    white-space: nowrap;
-  }
   .sidebar .stage-icon {
     display: none;
   }
