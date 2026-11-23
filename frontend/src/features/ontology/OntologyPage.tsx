@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { Button, TextField, MenuItem, Tabs, Tab, Alert } from "@mui/material";
 import { type Node } from "@xyflow/react";
 import { OntologyCanvas } from "./OntologyCanvas";
+import { usePageSave } from "../../app/layout/pageSave";
 import { ontologyApi, metadataApi } from "../../api/workflowApi";
 import {
   useAction,
@@ -69,6 +70,15 @@ export default function OntologyPage() {
     }),
   );
   const save = useAction((sid) => ontologyApi.save(sid));
+  // Save & Next persists the draft exactly like "Save draft".
+  usePageSave(
+    onto
+      ? async () => {
+          await save.mutateAsync();
+          return true;
+        }
+      : null,
+  );
   const revert = useAction((sid) => ontologyApi.revert(sid));
   const add = useAction((sid) =>
     ontologyApi.addClass(sid, {

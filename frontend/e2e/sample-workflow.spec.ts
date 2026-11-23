@@ -32,9 +32,8 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await expect(
     page.getByRole("heading", { name: "Data Sources" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Continue to Goal & Scope" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Back" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Save & Next" })).toBeEnabled();
   await expect(page.getByRole("tab")).toHaveText(["CSV upload", "PostgreSQL"]);
   await page
     .getByLabel("Choose source files")
@@ -50,10 +49,7 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
       ].map((file) => `../data/samples/customer360/${file}.csv`),
     );
   await page.getByRole("button", { name: "Analyze and connect files" }).click();
-  await expect(
-    page.getByRole("link", { name: "Continue to Goal & Scope" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Continue to Goal & Scope" }).click();
+  await page.getByRole("button", { name: "Save & Next" }).click();
   await expect(
     page.getByRole("heading", { name: "Define your scope" }),
   ).toBeVisible();

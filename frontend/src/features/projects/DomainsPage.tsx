@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { libraryApi, useDomains } from "../../api/libraryApi";
+import { usePageSave } from "../../app/layout/pageSave";
 import { Feedback, PageHeader, Panel } from "../../shared/ui/WorkspaceUi";
 import {
   ScopeFields,
@@ -34,6 +35,17 @@ export default function DomainsPage() {
       reset(scopeValues());
       await client.invalidateQueries({ queryKey: ["domains"] });
     },
+  });
+  // Save & Next: save the domain being typed, if any; otherwise just move on.
+  usePageSave(async () => {
+    if (!name.trim()) return true;
+    let values = null as ScopeValues | null;
+    await handleSubmit((valid) => {
+      values = valid;
+    })();
+    if (!values) return false;
+    await save.mutateAsync(values);
+    return true;
   });
   return (
     <>

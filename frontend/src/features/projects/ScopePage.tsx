@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "react-router-dom";
 import { useDomains } from "../../api/libraryApi";
+import { usePageSave } from "../../app/layout/pageSave";
 import {
   ScopeFields,
   scopeSchema,
@@ -38,6 +39,20 @@ function ScopeForm({
     defaultValues: scopeValues(scope),
   });
   const save = useAction((id) => scopeApi.save(id, scopePayload(getValues())));
+  const { done } = useWorkspace();
+  // Save & Next: validate, then save. An untouched scope that is already saved is left alone,
+  // because saving refreshes downstream results.
+  usePageSave(async () => {
+    if (!isDirty && done.includes(1)) return true;
+    let valid = false;
+    await handleSubmit(() => {
+      valid = true;
+    })();
+    if (!valid) return false;
+    await save.mutateAsync();
+    reset(getValues());
+    return true;
+  });
   return (
     <form
       onSubmit={handleSubmit(() =>

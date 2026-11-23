@@ -12,7 +12,6 @@ import {
   RotateCcw,
   ChartNoAxesCombined,
   Shapes,
-  Sparkles,
   BadgeCheck,
   Workflow,
   HardDrive,
@@ -34,19 +33,10 @@ import { stageForPath, stageGroups, stageRoutes } from "../../constants/stages.c
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
 import { stageNavigation } from "../../constants/stageNavigation";
-import { StageContinuation } from "./StageContinuation";
+import { publishedTools } from "../../constants/publishedTools";
+import { PageNavigation } from "./PageNavigation";
 import { StageHelp } from "./StageHelp";
 import { StageStepper } from "./StageStepper";
-
-const publishedTools = [
-  { view: "explorer", label: "Published Graph Explorer", icon: Compass },
-  { view: "query", label: "Query Workbench", icon: BookOpen },
-  { view: "analytics", label: "Graph Analytics", icon: ChartNoAxesCombined },
-  { view: "schema", label: "Graph Schema", icon: Shapes },
-  { view: "operations", label: "Graph Operations", icon: Activity },
-  { view: "intelligence", label: "Graph Intelligence", icon: Sparkles },
-  { view: "graphml", label: "GraphML Import", icon: HardDrive },
-];
 
 function titleForRoute(pathname: string) {
   if (pathname === "/") return "Home";
@@ -342,7 +332,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Alert>
           )}
           {children}
-          {id && session.data && <StageContinuation workspace={session.data} />}
         </main>
         {activity && (
           <section className="activity-panel" aria-label="Activity log">
@@ -356,6 +345,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DataTable rows={events.data?.items ?? []} />
           </section>
         )}
+        <PageNavigation workspace={session.data} />
       </div>
       <Confirm
         open={reset}
