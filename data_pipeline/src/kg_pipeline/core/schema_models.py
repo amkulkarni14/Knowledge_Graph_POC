@@ -41,6 +41,7 @@ class ColumnInfo(BaseModel):
     name: str
     pg_type: str
     nullable: bool = True
+    original_type: str | None = None
     source_header: str = ""                     # original CSV header ("Cust ID"), empty for database columns
 
     @property
@@ -60,12 +61,18 @@ class TableInfo(BaseModel):
     primary_key: list[str] = []
     foreign_keys: list[ForeignKey] = []
     unique_constraints: list[list[str]] = []
+    source_path: str | None = None
+    asset_kind: str = "table"
+    size_bytes: int | None = None
+    relationship_origin: str = "declared"
     row_estimate: Optional[int] = None
 
 
 class SchemaCatalog(BaseModel):
     tables: dict[str, TableInfo]
     source_name: str = ""
+    source_type: str | None = None
+    connection_id: str | None = None
     extracted_at: str = ""
 
     def table(self, name: str) -> Optional[TableInfo]:

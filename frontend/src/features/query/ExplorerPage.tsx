@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, TextField, MenuItem, Tabs, Tab, Alert } from "@mui/material";
 import { Maximize2 } from "lucide-react";
 import { graphsApi, ontologyApi, snapshotsApi } from "../../api/workflowApi";
+import { sessionPath } from "../../api/client";
 import { useData, useWorkspace } from "../../shared/hooks/useWorkspace";
 import { useGraphStore } from "../../app/store";
 import {
@@ -12,13 +13,21 @@ import {
   Panel,
   Report,
 } from "../../shared/ui/WorkspaceUi";
-import type { JsonObject, GraphSelection } from "../../types/common.types";
+import type { JsonObject, GraphSelection, Schema } from "../../types/common.types";
 import { colorForLabel } from "../../constants/stages.constants";
 import GraphCanvas from "./GraphCanvas";
+import GraphQuestions from "./GraphQuestions";
+import EntityExplorer from "./EntityExplorer";
+const relationshipType = (edge: Schema<"GraphView">["edges"][number]) =>
+  String(edge.properties.type ?? edge.properties.label ?? edge.key);
+
 export default function ExplorerPage() {
-  const { id, done } = useWorkspace();
+  const { id, done, session } = useWorkspace();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { selected, layout, select, setLayout } = useGraphStore();
-  const [snapshot, setSnapshot] = useState(false);
+  const [snapshotPreference, setSnapshot] = useState<boolean>();
+  const snapshot = snapshotPreference ?? (searchParams.get("recovered") === "1" ||
+    (!done.includes(14) && Boolean(session.data?.snapshot)));
   const [ontology, setOntology] = useState("");
   const [build, setBuild] = useState("");
   const [search, setSearch] = useState("");
@@ -29,7 +38,9 @@ export default function ExplorerPage() {
   const [limit, setLimit] = useState(150);
   const [offset, setOffset] = useState(0);
   const [fit, setFit] = useState(0);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [entitySearchRevision, setEntitySearchRevision] = useState(0);
+  const [relationship, setRelationship] = useState("");
+  const [evidence, setEvidence] = useState<{ scope: string; graph: Schema<"GraphView"> }>();
   const view = searchParams.get("view");
   const tab = view === "path" ? 1 : view === "metrics" ? 2 : 0;
   const [edge, setEdge] = useState<JsonObject | null>(null);
@@ -50,11 +61,13 @@ export default function ExplorerPage() {
     (signal) => ontologyApi.draft(id, signal),
     done.includes(5),
   );
-  const oid = ontology || draft.data?.ontology_id || "";
+  const recovery = session.data?.snapshot;
+  const oid = ontology || (snapshot && recovery?.ontology_id) || draft.data?.ontology_id || "";
   const selection: GraphSelection = snapshot
-    ? { ontology_id: oid, build_id: build || undefined }
+    ? { ontology_id: oid, build_id: build || (oid === recovery?.ontology_id ? recovery?.build_id : undefined) }
     : {};
   const enabled = snapshot ? !!oid : done.includes(14);
+  const questionScope = JSON.stringify([id, session.data?.source_version, selection]);
   const snapshots = useData(
     ["snapshots", oid],
     (signal) => snapshotsApi.list(id, oid, signal),
@@ -109,6 +122,14 @@ export default function ExplorerPage() {
     (signal) => graphsApi.path(id, { ...selection, ...pathInput! }, signal),
     enabled && !!pathInput,
   );
+  const evidenceGraph = evidence?.scope === questionScope ? evidence.graph : undefined;
+  const displayed = evidenceGraph ?? graph.data;
+  const types = useMemo(() => [...new Set((displayed?.edges ?? []).map(relationshipType))].sort(), [displayed]);
+  const visibleGraph = useMemo(() => displayed && relationship && types.includes(relationship)
+    ? { ...displayed, edges: displayed.edges.filter((edge) => relationshipType(edge) === relationship) }
+    : displayed, [displayed, relationship, types]);
+  const highlightedPath = useMemo(() =>
+    tab === 1 && Array.isArray(path.data?.nodes) ? path.data.nodes.map(String) : undefined, [tab, path.data]);
   const labels = Array.from(
     new Set([
       ...(draft.data?.classes?.map((c) => c.name) ?? []),
@@ -223,6 +244,7 @@ export default function ExplorerPage() {
               ["cose", "Force-directed"],
               ["circle", "Circle"],
               ["grid", "Grid"],
+              ["label-grid", "Grid grouped by label"],
               ["breadthfirst", "Hierarchy"],
             ].map(([v, l]) => (
               <MenuItem key={v} value={v}>
@@ -242,18 +264,26 @@ export default function ExplorerPage() {
         </div>
         <Feedback error={snapshots.error} />
       </Panel>
+      <GraphQuestions key={questionScope} id={id} selection={selection} scope={questionScope}
+        enabled={enabled} showGraph={(result) => {
+          setEvidence({ scope: questionScope, graph: result });
+          setRelationship("");
+          setEntitySearchRevision((revision) => revision + 1);
+        }} />
       {!enabled && (
         <Alert severity="info" className="mt-5">
           Complete graph construction or choose a saved snapshot.
         </Alert>
       )}
+      <EntityExplorer key={questionScope + "/" + entitySearchRevision}
+        enabled={enabled && tab === 0 && !!id} path={id ? sessionPath(id, "/graphs") : ""} selection={selection} fitKey={fit}>
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_330px] gap-5 mt-5">
         <Panel
           title="Graph workspace"
           action={
             <span className="muted">
-              {graph.data?.nodes.length ?? 0} visible /{" "}
-              {graph.data?.total_nodes ?? 0} total nodes
+              {visibleGraph?.nodes.length ?? 0} visible /{" "}
+              {visibleGraph?.total_nodes ?? 0} total nodes
             </span>
           }
         >
@@ -263,17 +293,36 @@ export default function ExplorerPage() {
             onRetry={() => void graph.refetch()}
           />
           <div className="graph-frame">
-            {graph.data && (
+            {visibleGraph && (
               <GraphCanvas
-                graph={graph.data}
+                graph={visibleGraph}
                 layout={layout}
                 onSelect={onNode}
                 onEdge={onEdge}
                 fitKey={fit}
+                path={highlightedPath}
               />
             )}
           </div>
           <div className="toolbar mt-4">
+            {types.length > 0 && <TextField select size="small" label="Relationship type"
+              value={types.includes(relationship) ? relationship : ""}
+              onChange={(event) => setRelationship(event.target.value)}>
+              <MenuItem value="">All visible types</MenuItem>
+              {types.map((type) => <MenuItem key={type} value={type}>{type}</MenuItem>)}
+            </TextField>}
+            {evidenceGraph && <Button onClick={() => { setEvidence(undefined); setRelationship(""); }}>Clear query evidence</Button>}
+            <Button onClick={() => {
+              resetSelection();
+              setEvidence(undefined);
+              setLabel("");
+              setRelationship("");
+              setSearch("");
+              setHops(1);
+              setLimit(150);
+              setLayout("cose");
+              setFit((value) => value + 1);
+            }}>Reset graph filters</Button>
             {labels.map((l) => (
               <span className="text-[11px] flex items-center gap-1.5" key={l}>
                 <span
@@ -284,7 +333,7 @@ export default function ExplorerPage() {
               </span>
             ))}
           </div>
-          {graph.data?.truncated && (
+          {visibleGraph?.truncated && (
             <p className="muted mt-3">
               This is a bounded graph view. Use filters or neighborhood
               exploration to inspect other entities.
@@ -301,7 +350,11 @@ export default function ExplorerPage() {
               <Button
                 className="mt-4"
                 variant="outlined"
-                onClick={() => setFocus(selected)}
+                onClick={() => {
+                  if (focus === selected) setHops(Math.min(3, hops + 1));
+                  else setFocus(selected);
+                }}
+                disabled={focus === selected && hops === 3}
               >
                 Explore neighborhood
               </Button>
@@ -337,7 +390,10 @@ export default function ExplorerPage() {
               ))}
             </TextField>
             {focus && (
-              <Button onClick={() => setFocus("")}>Clear neighborhood</Button>
+              <div className="toolbar">
+                <Button disabled={hops === 1} onClick={() => setHops(hops - 1)}>Collapse one hop</Button>
+                <Button onClick={() => setFocus("")}>Clear neighborhood</Button>
+              </div>
             )}
           </div>
         </Panel>
@@ -362,7 +418,7 @@ export default function ExplorerPage() {
           {tab === 0 && (
             <>
               <TextField
-                label="Search node IDs"
+                label="Search node IDs or names"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -456,6 +512,7 @@ export default function ExplorerPage() {
           )}
         </Panel>
       </div>
+      </EntityExplorer>
     </>
   );
 }

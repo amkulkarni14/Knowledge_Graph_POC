@@ -14,7 +14,7 @@ from backend.app.exceptions.handlers import (
 from backend.app.repositories.sessions import SessionRepository
 from backend.app.repositories.graph_versions import recover_interrupted
 from backend.app.services.builds import BuildRunner
-from backend.app.api import auth, sessions, sources, metadata, ontology, builds, graphs, graph_versions, library
+from backend.app.api import auth, sessions, sources, metadata, ontology, builds, graphs, graph_versions, insights, library
 
 
 def create_app(config: ApiSettings | None = None):
@@ -40,7 +40,7 @@ def create_app(config: ApiSettings | None = None):
             await asyncio.to_thread(app.state.sessions.close)
 
     app = FastAPI(title="Knowledge Graph Platform API", version="1.0.0", lifespan=lifespan,
-                  description="Process-local workflow sessions; use one worker. Sign in at /api/v1/login "
+                  description="Use one worker for active workflow sessions. Saved workspaces support explicit recovery. Sign in at /api/v1/login "
                               "and send 'Authorization: Bearer <token>'.")
     app.state.config = config
     app.state.revoked_tokens = RevokedTokens()
@@ -61,8 +61,8 @@ def create_app(config: ApiSettings | None = None):
 
     # /login is the only public route besides /health; everything else requires a valid token.
     app.include_router(auth.router, prefix="/api/v1")
-    for router in (sessions.router, sources.router, metadata.router, ontology.router, builds.router,
-                   graphs.router, graph_versions.router, library.router):
+    for router in (sessions.router, sources.router, sources.manifest_router, metadata.router, ontology.router, builds.router,
+                   graphs.router, graph_versions.router, insights.router, library.router):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
     return app
 

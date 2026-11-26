@@ -1,3 +1,5 @@
+import { useWorkflowStages } from "../../shared/hooks/useWorkflowStages";
+import { appName } from "../../constants/branding";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +14,6 @@ import {
   RotateCcw,
   ChartNoAxesCombined,
   Shapes,
-  Sparkles,
   BadgeCheck,
   Workflow,
   HardDrive,
@@ -30,29 +31,21 @@ import {
 } from "../../shared/hooks/useWorkspace";
 import { sessionsApi } from "../../api/sessionsApi";
 import { authApi } from "../../api/authApi";
-import { stageForPath, stageGroups, stageRoutes } from "../../constants/stages.constants";
+import { stageForPath, stageRoutes } from "../../constants/stages.constants";
 import { Confirm, DataTable, Feedback } from "../../shared/ui/WorkspaceUi";
 import { ApiError } from "../../api/client";
 import { stageNavigation } from "../../constants/stageNavigation";
 import { StageContinuation } from "./StageContinuation";
 import { StageHelp } from "./StageHelp";
 import { StageStepper } from "./StageStepper";
-
-const publishedTools = [
-  { view: "explorer", label: "Published Graph Explorer", icon: Compass },
-  { view: "query", label: "Query Workbench", icon: BookOpen },
-  { view: "analytics", label: "Graph Analytics", icon: ChartNoAxesCombined },
-  { view: "schema", label: "Graph Schema", icon: Shapes },
-  { view: "operations", label: "Graph Operations", icon: Activity },
-  { view: "intelligence", label: "Graph Intelligence", icon: Sparkles },
-  { view: "graphml", label: "GraphML Import", icon: HardDrive },
-];
+import { publishedGraphViews } from "../../constants/publishedGraphViews";
 
 function titleForRoute(pathname: string) {
   if (pathname === "/") return "Home";
   if (pathname === "/domains") return "Domains";
   if (pathname === "/published-graphs") return "Published Graphs";
   if (pathname === "/explorer") return "Graph Explorer";
+  if (pathname === "/business-insights") return "Business Insights";
   if (pathname.startsWith("/build")) {
     const stage = Number(pathname.split("/")[2]) || 10;
     return stageNavigation[stage]?.title ?? "Graph Construction";
@@ -79,7 +72,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const client = useQueryClient();
   const location = useLocation();
   const graphView = new URLSearchParams(location.search).get("view");
-  const adviceStage = stageForPath(location.pathname) ??
+  const workflow = useWorkflowStages();
+  const currentStage = stageForPath(location.pathname);
+  const adviceStage = (currentStage && workflow.enabled(currentStage) ? currentStage : undefined) ??
     (location.pathname === "/explorer" ? graphView === "path" ? 18 : graphView === "metrics" ? 19 : 17 : undefined);
   const [reset, setReset] = useState(false);
   const authUser = useAuthStore((s) => s.user?.username);
@@ -111,11 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       useGraphStore.getState().reset();
     }
   }, [session.error, id, client]);
-  const stages = useQuery({
-    queryKey: ["stages"],
-    queryFn: ({ signal }) => sessionsApi.stages(signal),
-    staleTime: Infinity,
-  });
+  const stages = workflow.query;
   const events = useData(
     ["events"],
     (signal) => sessionsApi.events(id!, 0, signal),
@@ -149,16 +140,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         className={`sidebar ${collapsed ? "collapsed" : ""}`}
         aria-label="Main navigation"
       >
-        <div className="brand" title="Knowledge Graph Enterprise Studio">
+        <div className="brand" title={appName}>
           <Network size={27} />
-          {!collapsed && (
-            <span className="brand-name">
-              Knowledge Graph
-              <span className="block text-[10px] font-normal tracking-widest mt-1">
-                ENTERPRISE STUDIO
-              </span>
-            </span>
-          )}
+          {!collapsed && <span className="brand-name">{appName}</span>}
         </div>
         <nav className="sidebar-nav">
           {!collapsed && <div className="nav-group">Workspace</div>}
@@ -170,26 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Shapes size={16} />
             {!collapsed && <span className="nav-text">Domains</span>}
           </NavLink>
-          <NavLink to="/published-graphs" className="nav-link" title="Published Graphs" aria-label="Published Graphs">
-            <HardDrive size={16} />
-            {!collapsed && <span className="nav-text">Published Graphs</span>}
-          </NavLink>
-          {publishedTools.map(({ view, label, icon: Icon }) => {
-            const inPublishedWorkspace = location.pathname === "/published-graphs";
-            const active = inPublishedWorkspace && graphView === view;
-            const params = new URLSearchParams(inPublishedWorkspace ? location.search : "");
-            params.set("view", view);
-            if (view !== "explorer") params.delete("node");
-            return (
-              <Link key={view} to={{ pathname: "/published-graphs", search: params.toString() }}
-                className={`nav-link nav-sub-link${active ? " active" : ""}`}
-                title={label} aria-label={label} aria-current={active ? "page" : undefined}>
-                <Icon size={15} />
-                {!collapsed && <span className="nav-text">{label}</span>}
-              </Link>
-            );
-          })}
-          {id && stageGroups.map((group) => (
+          {id && workflow.groups.map((group) => (
             <div key={group.title}>
               {!collapsed && (
                 <button
@@ -227,7 +192,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 })}
             </div>
           ))}
-          {id && !collapsed && (
+          {!collapsed && (
             <button
               className="nav-group nav-group-toggle"
               aria-expanded={!collapsedGroups.includes("Graph Intelligence")}
@@ -237,8 +202,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               Graph Intelligence
             </button>
           )}
-          {id && (collapsed || !collapsedGroups.includes("Graph Intelligence")) && (
+          {(collapsed || !collapsedGroups.includes("Graph Intelligence")) && (
             <>
+              {id && <>
               <NavLink to="/explorer" end className={({ isActive }) => `nav-link ${isActive && graphView !== "path" && graphView !== "metrics" ? "active" : ""}`} title="Graph Explorer" aria-label="Graph Explorer">
                 <Compass size={16} />
                 {!collapsed && <span className="nav-text">Graph Explorer</span>}
@@ -251,8 +217,32 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <ChartNoAxesCombined size={15} />
                 {!collapsed && <span className="nav-text">Graph Metrics</span>}
               </NavLink>
+              </>}
+              <NavLink to="/business-insights" className="nav-link nav-sub-link" title="Business Insights" aria-label="Business Insights">
+                <LayoutDashboard size={15} />
+                {!collapsed && <span className="nav-text">Business Insights</span>}
+              </NavLink>
             </>
           )}
+          <NavLink to="/published-graphs" className="nav-link" title="Published Graphs" aria-label="Published Graphs">
+            <HardDrive size={16} />
+            {!collapsed && <span className="nav-text">Published Graphs</span>}
+          </NavLink>
+          {publishedGraphViews.map(({ view, label, icon: Icon }) => {
+            const inPublishedWorkspace = location.pathname === "/published-graphs";
+            const active = inPublishedWorkspace && graphView === view;
+            const params = new URLSearchParams(inPublishedWorkspace ? location.search : "");
+            params.set("view", view);
+            if (view !== "explorer") params.delete("node");
+            return (
+              <Link key={view} to={{ pathname: "/published-graphs", search: params.toString() }}
+                className={`nav-link nav-sub-link${active ? " active" : ""}`}
+                title={label} aria-label={label} aria-current={active ? "page" : undefined}>
+                <Icon size={15} />
+                {!collapsed && <span className="nav-text">{label}</span>}
+              </Link>
+            );
+          })}
         </nav>
         {stages.error && <Feedback error={stages.error} />}
         <div className="sidebar-footer">
@@ -295,11 +285,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="topbar-right">
             {id && adviceStage && <StageHelp key={`${id}/${adviceStage}`} id={id} stage={adviceStage} />}
             {id && <span className="workspace-badge" title={session.data?.name}>{session.data?.name ?? "Loading workspace…"}</span>}
-            <span className="topbar-divider" />
-            <span className="connection-row" aria-label={health.data ? "API connected" : health.isError ? "API disconnected" : "Checking API connection"}>
-              <span className={`connection-dot ${health.isError ? "disconnected" : health.data ? "connected" : ""}`} />
-              <span className="footer-label">{health.isError ? "API offline" : health.data ? "API connected" : "Connecting"}</span>
-            </span>
             {docs && <a className="icon-button" href={docs} target="_blank" rel="noreferrer" aria-label="API documentation" title="API documentation"><BookOpen size={16} /></a>}
             <button
               className="icon-button"

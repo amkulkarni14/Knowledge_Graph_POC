@@ -98,3 +98,147 @@ python -B -m pytest -p no:cacheprovider data_pipeline/tests -q
 Tests use temporary storage, offline fixtures and mocked external connections. TestClient emits a third-party Starlette deprecation warning for httpx; tests still run.
 
 See ../docs/api-integration.md for endpoint mapping, client patterns and limitations.
+
+## Ontology workflow policy
+
+The backend defaults to `KG_WORKFLOW_POLICY=governed`. For a local POC, set
+`KG_WORKFLOW_POLICY=poc_validation_only` before starting the backend. For Docker
+Compose, put the setting in `docker/.env` and rebuild and recreate the app
+services. Set `KG_DEPLOYMENT_ENV=production` in production. The backend rejects
+validation-only mode when the deployment environment is marked production.
+
+Validation-only mode hides AI Suggestions, Review & Approval, and Ontology
+Versioning. Save the ontology in Ontology Studio and run Ontology Validation.
+Only the successfully validated revision can feed the build. Editing or
+replacing that draft invalidates validation and downstream results. The policy
+does not approve the ontology or create an approval record. Workflow events and
+new graph artifacts retain the validation digest for lineage.
+
+Set the policy back to `governed` or unset it and restart the backend to restore
+the approval workflow. A backend restart ends process-local workspace sessions.
+Existing stored ontology versions, approval records, and published graphs remain
+on their existing storage.
+
+## Guided data connectors
+
+Stage 2 uses a candidate connection. Test connection checks access and closes
+its temporary handle. Connect opens a session-owned candidate for discovery and
+preview. Confirm selection publishes the selected asset set as the active source.
+Cancel closes the candidate. Disconnect clears the active connection and its
+dependent stages. Existing CSV upload and PostgreSQL endpoints still activate
+sources directly for API clients.
+
+The connector manifest is at GET /api/v1/source-types. Under the existing
+session sources route the guided operations are POST /test, POST /locations,
+POST /connections, and multipart POST /connections/upload. Candidate operations
+use GET /connections/candidate and GET /connections/{id}/assets,
+POST /connections/{id}/preview or /select, and DELETE /connections/{id}.
+DELETE /sources disconnects the active source. Full extraction uses stage 11.
+
+| Setting | Purpose |
+|---|---|
+| KG_SOURCE_ENDPOINTS | Comma-separated exact host:port pairs approved for database and custom S3 connections. |
+| KG_SOURCE_DEV_ENDPOINTS | Explicit non-production hostname and port exceptions for local services. Compose defaults to postgres:5432. |
+| KG_SOURCE_S3_ENDPOINTS | Comma-separated exact custom S3 origins. Supply endpoint-specific credentials. |
+| KG_SOURCE_MAX_ROWS / KG_SOURCE_MAX_BYTES | Guided staging limits, default 100,000 rows and 128 MiB of estimated row data. |
+| KG_SOURCE_ORACLE_WALLET_DIR / KG_SOURCE_ORACLE_WALLET_PASSWORD | Optional deployment-managed Oracle TLS wallet. |
+| INSTALL_SQL_SERVER_DRIVER | Optional Docker build flag. Set true when accepting the Microsoft ODBC Driver 18 license and installing that driver in the Linux image. |
+
+Use read-only source identities and restrict connector egress to permitted
+network destinations, especially for SDKs and drivers that resolve names
+internally. The Axios client submits credentials only for an explicit
+operation. The API keeps connection handles in session memory and returns
+sanitized status and errors. Configure platform trust or PGSSLROOTCERT for
+verified TLS.
+
+The source selector advertises CSV for local files and supported cloud objects.
+Object paths are listed through SDK pagination and indexed up to 1,000 entries
+in the chosen prefix. Use a narrower prefix for larger buckets. Preview reads
+a bounded range, and selected objects remain subject to existing file limits.
+For a partially sampled object, configure an explicit ontology key mapping.
+Excel, TSV, JSON, and Parquet remain outside the supported formats.
+
+Oracle uses Thin mode and TCPS. SQL Server uses ODBC Driver 18 with certificate
+validation and SQL authentication. S3 accepts default or temporary credentials
+and explicit keys, Azure accepts default identity, service principal, key or
+SAS, and Google sources use Application Default Credentials. BigQuery applies
+a dry run and caps generated query scans at 64 MiB. Cloud credential chains and
+trust material are configured in the deployment environment.
+
+## Business Insights
+
+The read-only `GET /api/v1/sessions/{session_id}/insights` endpoint uses the
+active connector and workspace schema. Dataset, date, category, and numeric
+filters apply within the selected profile. The API reports the observed row
+count and whether it reached the profile limit. Graph filters apply to the
+selected validated graph or workspace snapshot. Data quality findings come
+from the latest pipeline report for the dataset and are independent of row
+filters.
+
+The service caches the latest selection per workspace for up to 60 seconds.
+Use `refresh=true` to bypass the cache. `KG_INSIGHTS_ROWS` defaults to 5,000
+(maximum 25,000). Graph analytics default to a maximum of 100,000 nodes and
+300,000 edges, configurable through `KG_INSIGHTS_GRAPH_NODES` and
+`KG_INSIGHTS_GRAPH_EDGES`. The interactive preview shows up to 60 masked
+entities and 160 relationships. Pass these optional variables into the backend
+container environment if overriding the defaults.
+
+Field discovery excludes declared keys, sensitive scope fields, and ontology
+attributes marked as PII. Category and trend groups with fewer than three
+observations are omitted. Use scope and ontology sensitivity settings to
+classify fields that contain sensitive data. The dashboard provides aggregate
+CSV, trend PNG, and browser print-to-PDF.
+
+## Ask Your Knowledge Graph
+
+In Graph Explorer, select the current workspace graph or a saved snapshot and
+open **Ask Your Knowledge Graph**. In the backend environment set
+`KG_GRAPH_AI_ENABLED=true`, `KG_GRAPH_AI_MODEL` to the configured provider model,
+and `GROQ_API_KEY` to its server-side credential. Compose reads these settings
+from `docker/.env`. Suggestions and manual exploration work with AI disabled.
+
+Set `KG_GRAPH_AI_PROVIDER=groq` (the default) to keep the existing provider.
+Choose `rules` for offline predefined questions or `ollama` for a local model.
+Both use the same schema validation and execution path. Ollama connection or
+model failures fall back to predefined entity and relationship questions,
+counts, graph summaries, and paths between quoted node IDs. The UI shows the
+provider that answered and asks for clarification on unsupported questions.
+The status endpoint checks Ollama's installed model tags. For Groq it checks
+configuration presence, and the first query checks live connectivity.
+
+For Windows Docker Desktop, install and start Ollama for Windows, then run
+`ollama pull qwen2.5:7b` and `ollama list`. Set `KG_GRAPH_AI_ENABLED=true`,
+`KG_GRAPH_AI_PROVIDER=ollama`, `KG_GRAPH_AI_MODEL=qwen2.5:7b`, and
+`OLLAMA_BASE_URL=http://host.docker.internal:11434` in `docker/.env`.
+Use `http://127.0.0.1:11434` when running the backend directly on Windows.
+If Docker cannot reach the default listener, bind Ollama to a host interface
+reachable by Docker Desktop and limit port 11434 to trusted local access.
+Recreate the backend to apply runtime settings. The setting affects Ask Your
+Knowledge Graph. Stage Help and the published Neo4j workbench retain Groq.
+
+The workspace endpoints are `GET /api/v1/sessions/{id}/graphs/questions/suggestions`
+and `POST /api/v1/sessions/{id}/graphs/questions`. The model chooses a typed plan
+for a node label or a directed relationship pattern. Supported plans list or
+count matches, optionally filtering a supported property by a literal substring.
+Workspace plans run against the existing NetworkX graph or checked snapshot.
+Historical snapshots support labels and relationships. The existing published
+Neo4j Query Workbench continues to draft and validate its read-only Cypher
+subset separately.
+
+The provider receives the question, one previous question, and bounded schema
+identifiers. The explanation request contains calculated counts. Graph property
+values, record IDs, and connection credentials are excluded from the model
+context. The model orders verified statements, and the application assembles the
+explanation and links it to the result table and visual evidence.
+
+Queries have a maximum of 100,000 nodes and 250,000 relationships, a three-second
+execution deadline, two concurrent requests, and up to 40 displayed matches.
+Provider calls use the existing 20-second timeout. The query plan and returned
+evidence are inspectable. Workspace question history is kept in browser memory.
+
+For future stage assistants, reuse the provider interface and stage-help panel.
+Give each stage a bounded fact collector and a typed response contract. Keep
+schema, ontology, validation, build, and quality facts read-only. For Path
+Analysis and Business Insights, supply existing path evidence and aggregate
+definitions with source references. Keep operations behind each stage's
+existing explicit controls.

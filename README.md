@@ -37,6 +37,12 @@ Saving a source file does not update a running container. Pull the latest code o
 
 Refresh the browser after the container starts. Rebuilds preserve named volumes and saved artifacts. Recreating the backend clears active app sessions because those sessions live in memory.
 
+### Use the approval-free local workflow
+
+Set `KG_WORKFLOW_POLICY=poc_validation_only` in `docker/.env`, then run `docker compose up -d --no-deps --wait backend` from `docker/` and refresh the browser. The backend advertises 13 active stages, with Ontology Studio followed by Ontology Validation and Build Plan. The frontend uses this same stage list for navigation and progress. A successful validation of the current ontology is required to build.
+
+Set `KG_WORKFLOW_POLICY=governed` and recreate the backend to restore the 16-stage workflow and its approval requirements. Governed is the default, and deployments marked `production` or `prod` reject the validation-only policy.
+
 For development outside Docker, see the [frontend](frontend/README.md) and [backend](backend/README.md) instructions.
 
 ### Run the pipeline from Python

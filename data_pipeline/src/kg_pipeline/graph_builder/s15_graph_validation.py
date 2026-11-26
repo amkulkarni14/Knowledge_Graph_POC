@@ -105,7 +105,7 @@ def validate_graph(G: nx.MultiDiGraph, onto, source, stats: dict) -> dict:
 def run(ctx: PipelineContext) -> dict:
     if ctx.graph is None or not ctx.is_done(14):
         raise RuntimeError("Stage 14 must run first")
-    report = validate_graph(ctx.graph, ctx.approved_ontology, ctx.extraction.staged, ctx.build_stats)
+    report = validate_graph(ctx.graph, ctx.build_ontology, ctx.extraction.staged, ctx.build_stats)
     ctx.invalidate_from(15)
     ctx.graph_report = report
     ctx.log(15, f"Graph validation {'PASSED' if report['ok'] else 'FAILED'}: {len(report['errors'])} error(s), "

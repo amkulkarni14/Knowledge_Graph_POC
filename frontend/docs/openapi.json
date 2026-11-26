@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Knowledge Graph Platform API",
-    "description": "Process-local workflow sessions; use one worker. Sign in at /api/v1/login and send 'Authorization: Bearer <token>'.",
+    "description": "Use one worker for active workflow sessions. Saved workspaces support explicit recovery. Sign in at /api/v1/login and send 'Authorization: Bearer <token>'.",
     "version": "1.0.0"
   },
   "paths": {
@@ -168,6 +168,106 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Durable Workspaces",
+        "operationId": "durable_workspaces_api_v1_workspaces_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_list_SessionView__"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{session_id}/reopen": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Reopen Workspace",
+        "operationId": "reopen_workspace_api_v1_workspaces__session_id__reopen_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_SessionView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspaces/{session_id}": {
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Delete Workspace",
+        "operationId": "delete_workspace_api_v1_workspaces__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -600,6 +700,72 @@
         }
       }
     },
+    "/api/v1/sessions/{session_id}/sources/connections/upload": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Upload Candidate",
+        "operationId": "upload_candidate_api_v1_sessions__session_id__sources_connections_upload_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_ConnectionView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sessions/{session_id}/sources": {
       "get": {
         "tags": [
@@ -626,6 +792,83 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Disconnect",
+        "operationId": "disconnect_api_v1_sessions__session_id__sources_delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/schema": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Confirmed Schema",
+        "operationId": "confirmed_schema_api_v1_sessions__session_id__sources_schema_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_str__list_str___"
                 }
               }
             }
@@ -679,6 +922,488 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/test": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Test Connection",
+        "operationId": "test_connection_api_v1_sessions__session_id__sources_test_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_ConnectionView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/locations": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Locations",
+        "operationId": "locations_api_v1_sessions__session_id__sources_locations_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_list_str__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/connections": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Connect",
+        "operationId": "connect_api_v1_sessions__session_id__sources_connections_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_ConnectionView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/connections/candidate": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Pending Connection",
+        "operationId": "pending_connection_api_v1_sessions__session_id__sources_connections_candidate_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_Union_ConnectionView__NoneType__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}/assets": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Assets",
+        "operationId": "assets_api_v1_sessions__session_id__sources_connections__connection_id__assets_get",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": "",
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_Page_AssetView__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}/preview": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_api_v1_sessions__session_id__sources_connections__connection_id__preview_post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_PreviewView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}/select": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Select",
+        "operationId": "select_api_v1_sessions__session_id__sources_connections__connection_id__select_post",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_ConnectionView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}": {
+      "delete": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Cancel Candidate",
+        "operationId": "cancel_candidate_api_v1_sessions__session_id__sources_connections__connection_id__delete",
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/source-types": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Types",
+        "operationId": "types_api_v1_source_types_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_Literal__sample____csv____postgres____mssql____oracle____s3____azure_blob____azure_adls____gcs____bigquery____ConnectorSpec__"
                 }
               }
             }
@@ -1249,6 +1974,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SaveDraftRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2303,6 +3045,49 @@
         }
       }
     },
+    "/api/v1/sessions/{session_id}/builds/pipeline": {
+      "get": {
+        "tags": [
+          "builds"
+        ],
+        "summary": "Pipeline",
+        "operationId": "pipeline_api_v1_sessions__session_id__builds_pipeline_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sessions/{session_id}/builds": {
       "post": {
         "tags": [
@@ -2698,6 +3483,388 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Result_Page_dict__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/graphs/entities": {
+      "get": {
+        "tags": [
+          "graphs"
+        ],
+        "summary": "Entity Search",
+        "operationId": "entity_search_api_v1_sessions__session_id__graphs_entities_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "ontology_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ontology Id"
+            }
+          },
+          {
+            "name": "build_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]{8}T[0-9]{12}Z$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 300,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 63,
+              "default": "",
+              "title": "Label"
+            }
+          },
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Prefix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/graphs/entity-neighborhood": {
+      "get": {
+        "tags": [
+          "graphs"
+        ],
+        "summary": "Entity Neighborhood",
+        "operationId": "entity_neighborhood_api_v1_sessions__session_id__graphs_entity_neighborhood_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "ontology_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ontology Id"
+            }
+          },
+          {
+            "name": "build_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]{8}T[0-9]{12}Z$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "hops",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 0,
+              "default": 1,
+              "title": "Hops"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/graphs/questions/suggestions": {
+      "get": {
+        "tags": [
+          "graphs"
+        ],
+        "summary": "Question Suggestions",
+        "operationId": "question_suggestions_api_v1_sessions__session_id__graphs_questions_suggestions_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "ontology_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ontology Id"
+            }
+          },
+          {
+            "name": "build_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]{8}T[0-9]{12}Z$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Build Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_list_str__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/graphs/questions/provider": {
+      "get": {
+        "tags": [
+          "graphs"
+        ],
+        "summary": "Question Provider",
+        "operationId": "question_provider_api_v1_sessions__session_id__graphs_questions_provider_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/{session_id}/graphs/questions": {
+      "post": {
+        "tags": [
+          "graphs"
+        ],
+        "summary": "Ask Graph",
+        "operationId": "ask_graph_api_v1_sessions__session_id__graphs_questions_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphQuestionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_GraphAnswer_"
                 }
               }
             }
@@ -3743,6 +4910,167 @@
               "minimum": 1,
               "default": 15,
               "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph-projects/{project}/versions/{version}/entities": {
+      "get": {
+        "tags": [
+          "graph versions"
+        ],
+        "summary": "Entity Search",
+        "operationId": "entity_search_api_v1_graph_projects__project__versions__version__entities_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Version"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 300,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 63,
+              "default": "",
+              "title": "Label"
+            }
+          },
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Prefix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph-projects/{project}/versions/{version}/entity-neighborhood": {
+      "get": {
+        "tags": [
+          "graph versions"
+        ],
+        "summary": "Entity Neighborhood",
+        "operationId": "entity_neighborhood_api_v1_graph_projects__project__versions__version__entity_neighborhood_get",
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Version"
+            }
+          },
+          {
+            "name": "node_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "hops",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 0,
+              "default": 1,
+              "title": "Hops"
             }
           }
         ],
@@ -5360,6 +6688,283 @@
         }
       }
     },
+    "/api/v1/sessions/{session_id}/insights": {
+      "get": {
+        "tags": [
+          "business insights"
+        ],
+        "summary": "Insights",
+        "operationId": "insights_api_v1_sessions__session_id__insights_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Table"
+            }
+          },
+          {
+            "name": "dimension",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dimension"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "measure",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Measure"
+            }
+          },
+          {
+            "name": "date_field",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date Field"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "minimum",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimum"
+            }
+          },
+          {
+            "name": "maximum",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Maximum"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "quarter",
+                "year"
+              ],
+              "type": "string",
+              "default": "month",
+              "title": "Interval"
+            }
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "name": "ontology_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ontology Id"
+            }
+          },
+          {
+            "name": "build_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]{8}T[0-9]{12}Z$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Build Id"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result_InsightsResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/domains": {
       "get": {
         "tags": [
@@ -5714,7 +7319,7 @@
           },
           "version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Version",
             "default": 1
           },
@@ -5953,6 +7558,51 @@
         ],
         "title": "ApprovalRequest"
       },
+      "AssetView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "columns": {
+            "type": "integer",
+            "title": "Columns"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "relationship_origin": {
+            "type": "string",
+            "title": "Relationship Origin"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "columns",
+          "relationship_origin"
+        ],
+        "title": "AssetView"
+      },
       "AttributeDef": {
         "properties": {
           "name": {
@@ -6108,8 +7758,8 @@
         "properties": {
           "batch_size": {
             "type": "integer",
-            "maximum": 100000.0,
-            "minimum": 1.0,
+            "maximum": 100000,
+            "minimum": 1,
             "title": "Batch Size",
             "default": 5000
           },
@@ -6268,6 +7918,17 @@
             "title": "Nullable",
             "default": true
           },
+          "original_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Type"
+          },
           "source_header": {
             "type": "string",
             "title": "Source Header",
@@ -6280,6 +7941,198 @@
           "pg_type"
         ],
         "title": "ColumnInfo"
+      },
+      "ConnectionRequest": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "sample",
+              "csv",
+              "postgres",
+              "mssql",
+              "oracle",
+              "s3",
+              "azure_blob",
+              "azure_adls",
+              "gcs",
+              "bigquery"
+            ],
+            "title": "Source"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "configuration": {
+            "additionalProperties": {
+              "type": "string",
+              "format": "password",
+              "writeOnly": true
+            },
+            "type": "object",
+            "maxProperties": 30,
+            "title": "Configuration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "name"
+        ],
+        "title": "ConnectionRequest"
+      },
+      "ConnectionView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "sample",
+              "csv",
+              "postgres",
+              "mssql",
+              "oracle",
+              "s3",
+              "azure_blob",
+              "azure_adls",
+              "gcs",
+              "bigquery"
+            ],
+            "title": "Source"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "connected_at": {
+            "type": "string",
+            "title": "Connected At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "title": "Duration Ms"
+          },
+          "database": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "authentication": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authentication"
+          },
+          "read_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Only"
+          },
+          "asset_count": {
+            "type": "integer",
+            "title": "Asset Count",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "name",
+          "connected_at",
+          "duration_ms"
+        ],
+        "title": "ConnectionView"
+      },
+      "ConnectorSpec": {
+        "properties": {
+          "required": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required"
+          },
+          "optional": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Optional"
+          },
+          "authentication": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Authentication"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "formats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Formats"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "required",
+          "authentication"
+        ],
+        "title": "ConnectorSpec"
       },
       "CypherRequest": {
         "properties": {
@@ -6414,6 +8267,18 @@
             "maxItems": 100,
             "title": "Later List"
           },
+          "domain_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Id"
+          },
           "name": {
             "type": "string",
             "maxLength": 200,
@@ -6504,6 +8369,80 @@
         ],
         "title": "ForeignKey"
       },
+      "GraphAnswer": {
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/GraphQueryPlan"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "explanation_source": {
+            "type": "string",
+            "enum": [
+              "ai_evidence_selection",
+              "calculated"
+            ],
+            "title": "Explanation Source"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/GraphView"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "followups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Followups"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "groq",
+              "ollama",
+              "rules"
+            ],
+            "title": "Provider",
+            "default": "groq"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plan",
+          "count",
+          "explanation",
+          "explanation_source",
+          "graph",
+          "rows",
+          "followups"
+        ],
+        "title": "GraphAnswer"
+      },
       "GraphEdge": {
         "properties": {
           "source": {
@@ -6552,6 +8491,114 @@
         ],
         "title": "GraphNode"
       },
+      "GraphQueryPlan": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "entities",
+              "relationships",
+              "count_entities",
+              "count_relationships",
+              "path",
+              "insights",
+              "clarify"
+            ],
+            "title": "Operation"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship"
+          },
+          "target_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Label"
+          },
+          "property": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property"
+          },
+          "contains": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contains"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 180
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 180
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation"
+        ],
+        "title": "GraphQueryPlan"
+      },
       "GraphQuestion": {
         "properties": {
           "question": {
@@ -6567,6 +8614,58 @@
           "question"
         ],
         "title": "GraphQuestion"
+      },
+      "GraphQuestionRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "previous_question": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 600
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Question"
+          },
+          "ontology_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ontology Id"
+          },
+          "build_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{8}T[0-9]{12}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "GraphQuestionRequest"
       },
       "GraphView": {
         "properties": {
@@ -6619,6 +8718,400 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "InsightsBucket": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "records": {
+            "type": "integer",
+            "title": "Records"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "records"
+        ],
+        "title": "InsightsBucket"
+      },
+      "InsightsField": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "measure",
+              "date",
+              "category"
+            ],
+            "title": "Role"
+          },
+          "semantic": {
+            "type": "string",
+            "title": "Semantic"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "semantic"
+        ],
+        "title": "InsightsField"
+      },
+      "InsightsFinding": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "distribution",
+              "trends",
+              "quality",
+              "network"
+            ],
+            "title": "Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "explanation",
+          "metric",
+          "target"
+        ],
+        "title": "InsightsFinding"
+      },
+      "InsightsGraph": {
+        "properties": {
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsMetric"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "entity_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Types"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Entities"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Relationships"
+          },
+          "communities": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Communities"
+          },
+          "topology": {
+            "$ref": "#/components/schemas/GraphView"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "most_connected": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Most Connected"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metrics",
+          "entity_types",
+          "entities",
+          "relationships",
+          "communities",
+          "topology",
+          "dependencies",
+          "most_connected"
+        ],
+        "title": "InsightsGraph"
+      },
+      "InsightsMetric": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "definition": {
+            "type": "string",
+            "title": "Definition"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "value",
+          "definition"
+        ],
+        "title": "InsightsMetric"
+      },
+      "InsightsQuality": {
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "title": "Dataset"
+          },
+          "issue": {
+            "type": "string",
+            "title": "Issue"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset",
+          "issue",
+          "count",
+          "severity"
+        ],
+        "title": "InsightsQuality"
+      },
+      "InsightsResponse": {
+        "properties": {
+          "refreshed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Refreshed At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "tables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tables"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsField"
+            },
+            "type": "array",
+            "title": "Fields"
+          },
+          "scanned": {
+            "type": "integer",
+            "title": "Scanned"
+          },
+          "row_limit": {
+            "type": "integer",
+            "title": "Row Limit"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "dimension": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension"
+          },
+          "measure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure"
+          },
+          "date_field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Field"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsMetric"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "distribution": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Distribution"
+          },
+          "trends": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsBucket"
+            },
+            "type": "array",
+            "title": "Trends"
+          },
+          "quality": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsQuality"
+            },
+            "type": "array",
+            "title": "Quality"
+          },
+          "graph": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightsGraph"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/InsightsFinding"
+            },
+            "type": "array",
+            "title": "Findings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "refreshed_at",
+          "source",
+          "tables",
+          "table",
+          "fields",
+          "scanned",
+          "row_limit",
+          "truncated",
+          "dimension",
+          "measure",
+          "date_field",
+          "metrics",
+          "distribution",
+          "trends",
+          "quality",
+          "graph",
+          "findings"
+        ],
+        "title": "InsightsResponse"
       },
       "LoginRequest": {
         "properties": {
@@ -6813,6 +9306,37 @@
         ],
         "title": "Origin"
       },
+      "Page_AssetView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AssetView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "Page[AssetView]"
+      },
       "Page_dict_": {
         "properties": {
           "items": {
@@ -6854,8 +9378,8 @@
           },
           "port": {
             "type": "integer",
-            "maximum": 65535.0,
-            "minimum": 1.0,
+            "maximum": 65535,
+            "minimum": 1,
             "title": "Port",
             "default": 5432
           },
@@ -6910,6 +9434,70 @@
           "password"
         ],
         "title": "PostgresRequest"
+      },
+      "PreviewRequest": {
+        "properties": {
+          "asset": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Asset"
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 25,
+            "minimum": 1,
+            "title": "Limit",
+            "default": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "asset"
+        ],
+        "title": "PreviewRequest"
+      },
+      "PreviewView": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnInfo"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "title": "PreviewView"
       },
       "RelationshipDef": {
         "properties": {
@@ -7085,6 +9673,30 @@
         ],
         "title": "Result[AuthUserView]"
       },
+      "Result_ConnectionView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConnectionView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[ConnectionView]"
+      },
+      "Result_GraphAnswer_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GraphAnswer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[GraphAnswer]"
+      },
       "Result_GraphView_": {
         "properties": {
           "data": {
@@ -7096,6 +9708,18 @@
           "data"
         ],
         "title": "Result[GraphView]"
+      },
+      "Result_InsightsResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/InsightsResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[InsightsResponse]"
       },
       "Result_Ontology_": {
         "properties": {
@@ -7109,6 +9733,18 @@
         ],
         "title": "Result[Ontology]"
       },
+      "Result_Page_AssetView__": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Page_AssetView_"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[Page[AssetView]]"
+      },
       "Result_Page_dict__": {
         "properties": {
           "data": {
@@ -7120,6 +9756,18 @@
           "data"
         ],
         "title": "Result[Page[dict]]"
+      },
+      "Result_PreviewView_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PreviewView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[PreviewView]"
       },
       "Result_SavedDomain_": {
         "properties": {
@@ -7169,6 +9817,25 @@
         ],
         "title": "Result[StageAdvice]"
       },
+      "Result_Union_ConnectionView__NoneType__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[Union[ConnectionView, NoneType]]"
+      },
       "Result_Union_dict__NoneType__": {
         "properties": {
           "data": {
@@ -7203,6 +9870,55 @@
           "data"
         ],
         "title": "Result[dict]"
+      },
+      "Result_dict_Literal__sample____csv____postgres____mssql____oracle____s3____azure_blob____azure_adls____gcs____bigquery____ConnectorSpec__": {
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConnectorSpec"
+            },
+            "propertyNames": {
+              "enum": [
+                "sample",
+                "csv",
+                "postgres",
+                "mssql",
+                "oracle",
+                "s3",
+                "azure_blob",
+                "azure_adls",
+                "gcs",
+                "bigquery"
+              ]
+            },
+            "type": "object",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[dict[Literal['sample', 'csv', 'postgres', 'mssql', 'oracle', 's3', 'azure_blob', 'azure_adls', 'gcs', 'bigquery'], ConnectorSpec]]"
+      },
+      "Result_dict_str__list_str___": {
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[dict[str, list[str]]]"
       },
       "Result_list_ReviewItem__": {
         "properties": {
@@ -7284,6 +10000,22 @@
           "data"
         ],
         "title": "Result[list[dict]]"
+      },
+      "Result_list_str__": {
+        "properties": {
+          "data": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Result[list[str]]"
       },
       "ReviewItem": {
         "properties": {
@@ -7439,6 +10171,22 @@
         ],
         "title": "Rule"
       },
+      "SaveDraftRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SaveDraftRequest"
+      },
       "SavedDomain": {
         "properties": {
           "project": {
@@ -7510,6 +10258,18 @@
             "type": "array",
             "maxItems": 100,
             "title": "Later List"
+          },
+          "domain_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Id"
           },
           "name": {
             "type": "string",
@@ -7619,6 +10379,28 @@
             "title": "Source Name",
             "default": ""
           },
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
           "extracted_at": {
             "type": "string",
             "title": "Extracted At",
@@ -7702,6 +10484,18 @@
             "type": "array",
             "maxItems": 100,
             "title": "Later List"
+          },
+          "domain_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Id"
           }
         },
         "additionalProperties": false,
@@ -7711,6 +10505,25 @@
           "business_questions"
         ],
         "title": "ScopeRequest"
+      },
+      "SelectionRequest": {
+        "properties": {
+          "assets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Assets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "assets"
+        ],
+        "title": "SelectionRequest"
       },
       "SessionCreate": {
         "properties": {
@@ -7768,6 +10581,91 @@
           },
           "summary": {
             "$ref": "#/components/schemas/WorkspaceSummary"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "domain_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain Id"
+          },
+          "reconnect_required": {
+            "type": "boolean",
+            "title": "Reconnect Required",
+            "default": false
+          },
+          "historical_stages": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Historical Stages"
+          },
+          "recovery_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recovery Issues"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot"
+          },
+          "published_build": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Build"
+          },
+          "build_configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BuildRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -7904,6 +10802,38 @@
             "title": "Unique Constraints",
             "default": []
           },
+          "source_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Path"
+          },
+          "asset_kind": {
+            "type": "string",
+            "title": "Asset Kind",
+            "default": "table"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "relationship_origin": {
+            "type": "string",
+            "title": "Relationship Origin",
+            "default": "declared"
+          },
           "row_estimate": {
             "anyOf": [
               {
@@ -8038,8 +10968,8 @@
           },
           "hops": {
             "type": "integer",
-            "maximum": 2.0,
-            "minimum": 1.0,
+            "maximum": 2,
+            "minimum": 1,
             "title": "Hops",
             "default": 1
           },

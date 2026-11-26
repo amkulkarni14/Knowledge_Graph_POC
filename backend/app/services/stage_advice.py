@@ -23,7 +23,7 @@ GUIDES = {
         "Give the reviewer evidence for new mappings and document ambiguous or rejected suggestions."),
     7: ("Review & Approval", "Check whether each accepted change supports a business question.",
         "Confirm direction, cardinality, ownership and sensitive attributes before applying the review."),
-    8: ("Ontology Validation", "Resolve validation errors before version approval.",
+    8: ("Ontology Validation", "Resolve validation errors before continuing.",
         "Review warning severity, especially incomplete keys, invalid endpoint mappings and cycle rules."),
     9: ("Ontology Versioning", "Have an independent reviewer compare the proposed version with the approved version.",
         "Record changes to identity keys, mappings and cardinality because they can affect existing graph results."),
@@ -64,7 +64,7 @@ def context_for(session, stage):
         tables = ctx.catalog.tables.values()
         facts.update(table_count=len(tables), tables_without_primary_key=sum(not t.primary_key for t in tables),
                      foreign_key_count=sum(len(t.foreign_keys) for t in tables))
-    ontology = ctx.approved_ontology or ctx.hybrid_draft or session.editor
+    ontology = ctx.build_ontology or ctx.hybrid_draft or session.editor
     if ontology and stage >= 5:
         facts.update(class_count=len(ontology.classes), relationship_type_count=len(ontology.relationships))
     if stage in (6, 7):

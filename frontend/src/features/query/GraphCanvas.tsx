@@ -8,12 +8,16 @@ export default function GraphCanvas({
   onSelect,
   onEdge,
   fitKey,
+  path,
+  focus,
 }: {
   graph: Schema<"GraphView">;
   layout: string;
   onSelect: (id: string) => void;
   onEdge: (edge: JsonObject) => void;
   fitKey: number;
+  path?: string[];
+  focus?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<Core | null>(null);
@@ -23,6 +27,7 @@ export default function GraphCanvas({
       container: container.current,
       elements: [
         ...graph.nodes.map((n) => ({
+          classes: n.id === focus ? "entity-focus" : "",
           data: {
             ...n.properties,
             id: n.id,
@@ -74,6 +79,14 @@ export default function GraphCanvas({
           },
         },
         {
+          selector: ".shortest-path",
+          style: { "background-color": "#426e94", "line-color": "#426e94", "width": 4 },
+        },
+        {
+          selector: ".entity-focus",
+          style: { width: 34, height: 34, "border-width": 4, "border-color": "#426e94" },
+        },
+        {
           selector: ":selected",
           style: {
             "border-width": 4,
@@ -87,8 +100,16 @@ export default function GraphCanvas({
     });
     instance.current = cy;
     const arrangement = cy.layout({
-      name: layout,
+      name: layout === "label-grid" ? "grid" : layout,
       animate: false,
+      ...(focus && layout === "concentric" ? {
+        concentric: (node: cytoscape.NodeSingular) => node.id() === focus ? 2 : 1,
+        levelWidth: () => 1,
+      } : {}),
+      ...(layout === "label-grid" ? {
+        sort: (left: cytoscape.NodeSingular, right: cytoscape.NodeSingular) =>
+          String(left.data("label")).localeCompare(String(right.data("label"))) || left.id().localeCompare(right.id()),
+      } : {}),
     } as cytoscape.LayoutOptions);
     arrangement.run();
     cy.on("tap", "node", (e) => onSelect(e.target.id()));
@@ -107,10 +128,23 @@ export default function GraphCanvas({
       cy.destroy();
       instance.current = null;
     };
-  }, [graph, layout, onSelect, onEdge]);
+  }, [graph, layout, onSelect, onEdge, focus]);
   useEffect(() => {
     instance.current?.fit(undefined, 35);
   }, [fitKey]);
+  useEffect(() => {
+    const graphInstance = instance.current;
+    if (!graphInstance) return;
+    const vertices = new Set(path ?? []);
+    const pairs = new Set(path?.slice(1).flatMap((node, index) => [
+      JSON.stringify([path[index], node]), JSON.stringify([node, path[index]]),
+    ]) ?? []);
+    graphInstance.elements().removeClass("shortest-path");
+    graphInstance.nodes().filter((node) => vertices.has(node.id())).addClass("shortest-path");
+    graphInstance.edges().filter((edge) =>
+      pairs.has(JSON.stringify([edge.source().id(), edge.target().id()])),
+    ).addClass("shortest-path");
+  }, [graph, layout, path]);
   return (
     <div
       ref={container}

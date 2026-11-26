@@ -1,7 +1,7 @@
 import { LinearProgress } from "@mui/material";
 import { useLocation } from "react-router-dom";
 import type { Stage } from "../../types/common.types";
-import { stageForPath, stagePosition } from "../../constants/stages.constants";
+import { stageForPath, stageOrder } from "../../constants/stages.constants";
 import { stageNavigation } from "../../constants/stageNavigation";
 export function StageStepper({
   stages,
@@ -20,8 +20,11 @@ export function StageStepper({
         <span>
           {current ? (
             <strong>
-              Stage {stagePosition(current.no)} ·{" "}
-              {stageNavigation[current.no]?.title ?? current.title}
+              Stage{" "}
+              {stageOrder
+                .filter((id) => stages.some((stage) => stage.no === id))
+                .indexOf(current.no) + 1}{" "}
+              · {stageNavigation[current.no]?.title ?? current.title}
             </strong>
           ) : (
             "Workflow progress"

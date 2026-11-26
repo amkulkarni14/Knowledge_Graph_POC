@@ -30,7 +30,7 @@ export const stageNavigation: Record<
   7: { title: "Review & Approval", icon: ClipboardCheck },
   8: { title: "Ontology Validation", icon: BadgeCheck },
   9: { title: "Ontology Versioning", icon: History },
-  10: { title: "Build Plan", icon: ListChecks },
+  10: { title: "Graph Build Manager", icon: ListChecks },
   11: { title: "Data Extraction", icon: Rows3 },
   12: { title: "Data Quality", icon: ShieldCheck },
   13: { title: "Cleaning & Entity Resolution", icon: Workflow },

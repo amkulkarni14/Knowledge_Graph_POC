@@ -55,7 +55,7 @@ def analyze(graph):
 
 
 def private_identifiers(ctx):
-    onto = ctx.approved_ontology
+    onto = ctx.build_ontology
     sensitive = set(ctx.scope.sensitive_columns if ctx.scope else ())
     for cls in onto.classes:
         if cls.mapping:
@@ -98,8 +98,8 @@ def private_identifiers(ctx):
 
 def persist(session, actor, version, report, commit, started_at=None, *, context=None):
     ctx = context if context is not None else session.ctx
-    if not ctx.graph_report or not ctx.graph_report["ok"] or ctx.approved_ontology is None:
-        raise ApiError(409, "invalid_graph", "Graph and approved ontology must pass validation")
+    if not ctx.graph_report or not ctx.graph_report["ok"] or ctx.build_ontology is None:
+        raise ApiError(409, "invalid_graph", "Graph and ontology must pass validation")
     report("analytics", 0)
     node_ids, edge_key = private_identifiers(ctx)
     analytics = analyze(nx.relabel_nodes(ctx.graph, node_ids) if node_ids else ctx.graph)
@@ -113,7 +113,7 @@ def persist(session, actor, version, report, commit, started_at=None, *, context
     }
     hidden = {name.casefold() for name in hidden_properties(session)}
     sensitive = set(ctx.scope.sensitive_columns if ctx.scope else ())
-    for relationship in ctx.approved_ontology.relationships:
+    for relationship in ctx.build_ontology.relationships:
         mapping = relationship.mapping
         if mapping:
             hidden.update(prop.name.casefold() for prop in relationship.properties if prop.pii)
@@ -125,7 +125,7 @@ def persist(session, actor, version, report, commit, started_at=None, *, context
         with versions.registry() as db:
             versions.register(db, session, actor, version, ctx, analytics, started_at)
         import_and_publish(session, actor, version, report, commit, hidden, node_ids, edge_key, ctx.graph)
-    ctx.snapshot = {"build_id": version, "ontology_id": ctx.approved_ontology.ontology_id,
+    ctx.snapshot = {"build_id": version, "ontology_id": ctx.build_ontology.ontology_id,
                     "published": True, "storage": "neo4j"}
     ctx.mark_done(16)
 

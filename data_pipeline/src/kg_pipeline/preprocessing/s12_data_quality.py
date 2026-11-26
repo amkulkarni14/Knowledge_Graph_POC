@@ -127,7 +127,7 @@ def run(ctx: PipelineContext, business_rules: dict[str, list[tuple]] | None = No
         raise RuntimeError("Stage 11 must run first")
     rules = DEFAULT_BUSINESS_RULES if business_rules is None else business_rules
     rules = {t: r for t, r in rules.items() if t in ctx.catalog.tables}
-    report = profile(ctx.approved_ontology, ctx.extraction.staged, business_rules=rules)
+    report = profile(ctx.build_ontology, ctx.extraction.staged, business_rules=rules)
     report["business_rules"] = {t: [f"{c} {rule}" + (f" {sorted(a[0])}" if a else "") for c, rule, *a in r]
                                 for t, r in rules.items()}
     report["rules"] = rules

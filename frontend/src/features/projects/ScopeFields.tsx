@@ -1,5 +1,6 @@
 import { TextField } from "@mui/material";
-import type { FieldErrors, UseFormRegister } from "react-hook-form";
+import type { ReactElement } from "react";
+import type { FieldErrors, UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import type { Schema } from "../../types/common.types";
 
@@ -39,10 +40,17 @@ export function scopeValues(
   };
 }
 
-export function scopePayload(value: ScopeValues): Schema<"ScopeRequest"> {
+export function scopePayload(
+  value: Omit<ScopeValues, "business_questions"> & {
+    business_questions: string | string[];
+  },
+): Schema<"ScopeRequest"> {
   return {
     project: value.project,
-    business_questions: lines(value.business_questions),
+    business_questions:
+      typeof value.business_questions === "string"
+        ? lines(value.business_questions)
+        : value.business_questions,
     scope_notes: value.scope_notes,
     columns_in_scope: lines(value.columns_in_scope),
     tables_in_scope: lines(value.tables_in_scope),
@@ -52,13 +60,25 @@ export function scopePayload(value: ScopeValues): Schema<"ScopeRequest"> {
   };
 }
 
-export function ScopeFields({
-  register,
-  errors,
-}: {
-  register: UseFormRegister<ScopeValues>;
-  errors: FieldErrors<ScopeValues>;
-}) {
+type CommonFields = Omit<ScopeValues, "business_questions">;
+type FieldsProps = { errors: FieldErrors<CommonFields> } & (
+  | {
+      businessQuestions: ReactElement;
+      sourceSelectors?: ReactElement;
+      register: (name: keyof CommonFields) => UseFormRegisterReturn;
+    }
+  | {
+      businessQuestions?: undefined;
+      sourceSelectors?: undefined;
+      register: (name: keyof ScopeValues) => UseFormRegisterReturn;
+      errors: FieldErrors<ScopeValues>;
+    }
+);
+
+export function ScopeFields(props: FieldsProps) {
+  const { register, errors } = props;
+  const isWorkspaceScope = props.businessQuestions !== undefined;
+  const lineSuffix = isWorkspaceScope ? "" : " — one per line";
   return (
     <>
       <TextField
@@ -68,15 +88,19 @@ export function ScopeFields({
         helperText={errors.project?.message}
         required
       />
-      <TextField
-        label="Business questions — one per line"
-        {...register("business_questions")}
-        multiline
-        minRows={3}
-        error={!!errors.business_questions}
-        helperText={errors.business_questions?.message}
-        required
-      />
+      {props.businessQuestions !== undefined ? (
+        props.businessQuestions
+      ) : (
+        <TextField
+          label="Business questions — one per line"
+          {...props.register("business_questions")}
+          multiline
+          minRows={3}
+          error={!!props.errors.business_questions}
+          helperText={props.errors.business_questions?.message}
+          required
+        />
+      )}
       <TextField
         label="Scope notes"
         {...register("scope_notes")}
@@ -86,8 +110,9 @@ export function ScopeFields({
         helperText={errors.scope_notes?.message}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {props.sourceSelectors ?? <>
         <TextField
-          label="Tables in scope — one per line"
+          label={`Tables in scope${lineSuffix}`}
           {...register("tables_in_scope")}
           multiline
           minRows={3}
@@ -98,23 +123,26 @@ export function ScopeFields({
           {...register("columns_in_scope")}
           multiline
           minRows={3}
-          helperText="One qualified column per line, e.g. public.customers.id. Recorded for planning."
+          helperText={isWorkspaceScope
+            ? "Qualified columns, e.g. public.customers.id. Recorded for planning."
+            : "One qualified column per line, e.g. public.customers.id. Recorded for planning."}
         />
         <TextField
-          label="Sensitive columns — one per line"
+          label={`Sensitive columns${lineSuffix}`}
           {...register("sensitive_columns")}
           multiline
           minRows={3}
           helperText="Qualified names, e.g. public.customers.email"
         />
+        </>}
         <TextField
-          label="Intended users — one per line"
+          label={`Intended users${lineSuffix}`}
           {...register("users")}
           multiline
           minRows={2}
         />
         <TextField
-          label="Deferred scope — one per line"
+          label={`Deferred scope${lineSuffix}`}
           {...register("later_list")}
           multiline
           minRows={2}

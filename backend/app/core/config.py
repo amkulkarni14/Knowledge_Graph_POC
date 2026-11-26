@@ -44,6 +44,8 @@ class ApiSettings:
     max_sessions: int = 100
     max_request_bytes: int = 64 * 1024 * 1024
     max_jobs: int = 2
+    workflow_policy: str = field(default_factory=lambda: os.getenv("KG_WORKFLOW_POLICY", "governed").strip())
+    deployment_environment: str = field(default_factory=lambda: os.getenv("KG_DEPLOYMENT_ENV", "").strip().lower())
     # Authentication. The default account comes from the environment so it can later
     # be replaced by a users table without touching the login endpoint's contract.
     jwt_secret_key: str = field(default_factory=_jwt_secret, repr=False)
@@ -54,6 +56,12 @@ class ApiSettings:
         default_factory=lambda: os.environ.get("AUTH_DEFAULT_PASSWORD_HASH", "").strip(), repr=False)
 
     def __post_init__(self):
+        from backend.app.services.workflow_policy import GOVERNED, VALIDATION_ONLY
+
+        if self.workflow_policy not in {GOVERNED, VALIDATION_ONLY}:
+            raise ValueError("KG_WORKFLOW_POLICY must be governed or poc_validation_only")
+        if self.workflow_policy == VALIDATION_ONLY and self.deployment_environment in {"production", "prod"}:
+            raise ValueError("Validation-only workflow policy cannot be used in production")
         if min(self.session_ttl_seconds, self.max_sessions, self.max_request_bytes, self.max_jobs,
                self.access_token_expire_minutes) < 1:
             raise ValueError("API resource limits must be positive")

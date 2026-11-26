@@ -92,6 +92,14 @@ def test_source_to_published_versions(tmp_path, monkeypatch, source_order):
         assert [row["id"] for row in filtered] == [root]
         schema = ok(client.get(version + "/schema"))
         assert schema["labels"] and schema["types"]
+        types = ok(client.get(version + "/entities"))["types"]
+        assert "Order" in types
+        short_id = root.split(":", 1)[1]
+        matches = ok(client.get(version + "/entities", params={"q": short_id, "label": "Order"}))["matches"]
+        assert any(match["id"] == root for match in matches)
+        entity = ok(client.get(version + "/entity-neighborhood", params={"node_id": root, "hops": 3}))
+        assert entity["root"]["id"] == root
+        assert entity["ontology"]["classes"] and entity["graph"]["edges"]
         from backend.app.services import graph_intelligence
         with monkeypatch.context() as injected:
             def fixture_provider(_, payload):

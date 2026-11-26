@@ -1,5 +1,6 @@
 """Bounded in-process build execution with pollable status."""
 from concurrent.futures import ThreadPoolExecutor
+from collections import Counter
 from dataclasses import replace
 from datetime import datetime, timezone
 from threading import BoundedSemaphore
@@ -7,9 +8,71 @@ from time import monotonic
 from uuid import uuid4
 from fastapi.encoders import jsonable_encoder
 from backend.app.exceptions.handlers import ApiError
-from backend.app.services.workflow import STAGE_FUNCTIONS, execute, require, rules_for
+from backend.app.services.workflow import STAGE_FUNCTIONS, execute, require, require_build_ontology, rules_for
 from backend.app.services.graph_publication import persist
 from backend.app.services.graphml_import import read_graphml
+
+BUILD_STAGES = tuple(stage for stage in sorted(STAGE_FUNCTIONS) if stage >= 10)
+PERSISTENCE_STAGE = 16
+
+
+def execution_result(session, stage, result):
+    """Small, durable summaries. Detailed reports stay on their existing endpoints."""
+    if stage == 10:
+        return {"entity_types": len(result["nodes"]), "relationship_types": len(result["edges"])}
+    if stage == 11:
+        return {"tables": result["tables"], "total_rows": result["total_rows"]}
+    if stage == 12:
+        tables = result["tables"]
+        return {"tables": {
+                    name: {**{key: value for key, value in table.items() if key != "duplicate_entities"},
+                           "duplicate_entity_groups": len(table["duplicate_entities"])}
+                    for name, table in tables.items()
+                },
+                "findings": dict(Counter(item["severity"] for item in result["findings"])),
+                "checks": dict(Counter(item["check"] for item in result["findings"])),
+                "business_rules_applied": sum(map(len, result["business_rules"].values()))}
+    if stage == 15:
+        return {**result, "errors": len(result["errors"]), "warnings": len(result["warnings"]),
+                "checks": {"passed": sum(1 for check in result["checks"] if check["result"].endswith("pass")),
+                            "total": len(result["checks"])}}
+    if stage == PERSISTENCE_STAGE:
+        return {"destination": "Neo4j", **(session.published_build or {}), **result}
+    return result
+
+
+def mark_step(job, stage, status, result=None):
+    now = datetime.now(timezone.utc)
+    steps = []
+    for step in job["steps"]:
+        if step["stage"] == stage:
+            step = {**step, "status": status}
+            if status == "running":
+                step["started_at"] = now.isoformat()
+            else:
+                step["finished_at"] = now.isoformat()
+                if step.get("started_at") and status != "interrupted":
+                    step["duration_ms"] = max(0, round((now - datetime.fromisoformat(step["started_at"])).total_seconds() * 1000))
+                if result is not None:
+                    step["result"] = result
+        steps.append(step)
+    job["steps"] = steps
+    severity, message = {
+        "running": ("info", "Stage started."),
+        "completed": ("success", "Stage completed."),
+        "failed": ("error", "Stage stopped before completion."),
+        "interrupted": ("warning", "Stage interrupted."),
+        "skipped": ("warning", "Stage skipped."),
+    }[status]
+    job["events"] = [*job["events"], {"time": now.isoformat(), "stage": stage,
+                                     "severity": severity, "message": message}]
+    if status == "completed" and result:
+        findings = result.get("findings")
+        warnings = (findings.get("warn", 0) + findings.get("quarantine", 0)
+                    if isinstance(findings, dict) else result.get("warnings"))
+        if isinstance(warnings, int) and warnings > 0:
+            job["events"] = [*job["events"], {"time": now.isoformat(), "stage": stage, "severity": "warning",
+                                             "message": "Review the findings in the stage results."}]
 
 
 def stage_result(session, stage):
@@ -48,6 +111,7 @@ def run_stage(session, stage, body):
     if stage == 12:
         kwargs["business_rules"] = rules_for(session, body)
     execute(session, stage, STAGE_FUNCTIONS[stage], **kwargs)
+    session.build_request = body.model_dump(mode="json")
     return jsonable_encoder(stage_result(session, stage))
 
 
@@ -74,6 +138,7 @@ class BuildRunner:
                 job["status"] = "cancelling"
             elif job["status"] != "cancelling":
                 raise ApiError(409, "job_not_cancellable", "This build can no longer be cancelled")
+            session.checkpoint()
             return dict(job)
 
     @staticmethod
@@ -86,21 +151,30 @@ class BuildRunner:
             raise ApiError(409, "session_busy", "Wait for the current operation")
         acquired = False
         try:
-            if graphml is not None:
-                require(session, 9)
-            elif body is None:
-                require(session, 9, 14, 15)
-            else:
-                require(session, 3, 9)
+            if graphml is None and body is not None:
+                require(session, 2, 3)
+            require_build_ontology(session)
+            if graphml is None and body is None:
+                require(session, 14, 15)
+            elif body is not None:
                 rules_for(session, body)
             if not self.slots.acquire(blocking=False):
                 raise ApiError(503, "build_capacity", "Build capacity reached; try again later")
             acquired = True
             started_at = datetime.now(timezone.utc)
             with session.status_lock:
+                stages = BUILD_STAGES if body is not None else ()
+                if actor is not None:
+                    stages += (PERSISTENCE_STAGE,)
                 session.job = {"id": str(uuid4()), "status": "queued", "stage": None, "progress": None,
-                               "error": None, "started_at": started_at.isoformat()}
+                               "error": None, "started_at": started_at.isoformat(),
+                               "steps": [{"stage": stage, "status": "pending"} for stage in stages],
+                               "events": [{"time": started_at.isoformat(), "stage": None,
+                                           "severity": "info", "message": "Execution queued."}]}
                 initial = dict(session.job)
+                if body is not None:
+                    session.build_request = body.model_dump(mode="json")
+                session.checkpoint()
             self.pool.submit(self._run, session, body, actor, initial["id"], started_at, graphml)
             return initial
         except Exception:
@@ -110,59 +184,82 @@ class BuildRunner:
             raise
 
     def _run(self, session, body, actor, version, started_at, graphml=None):
+        status, error = "failed", None
         try:
-            for stage in range(10, 16) if body is not None else ():
+            for stage in BUILD_STAGES if body is not None else ():
                 with session.status_lock:
                     self._check_cancelled(session)
                     session.job.update(status="running", stage=stage, progress=None)
-                run_stage(session, stage, body)
-                if not session.ctx.is_done(stage):
-                    with session.status_lock:
-                        session.job["status"] = "blocked"
+                    mark_step(session.job, stage, "running")
+                    session.checkpoint()
+                result = run_stage(session, stage, body)
+                success = session.ctx.is_done(stage)
+                with session.status_lock:
+                    mark_step(session.job, stage, "completed" if success else "failed", execution_result(session, stage, result))
+                session.checkpoint()
+                if not success:
+                    status = "blocked"
                     break
             else:
                 if actor is not None:
+                    with session.status_lock:
+                        self._check_cancelled(session)
+                        session.job.update(status="running", stage=PERSISTENCE_STAGE, progress=None)
+                        mark_step(session.job, PERSISTENCE_STAGE, "running")
+                        session.checkpoint()
                     def report(phase, processed):
                         with session.status_lock:
                             self._check_cancelled(session)
-                            session.job.update(status="running", stage=16,
+                            session.job.update(status="running", stage=PERSISTENCE_STAGE,
                                                progress={"phase": phase, "processed": processed})
 
                     def commit():
                         with session.status_lock:
                             self._check_cancelled(session)
                             session.job["status"] = "publishing"
+                            session.checkpoint()
 
                     if graphml is None:
                         persist(session, actor, version, report, commit, started_at)
+                        graph = session.ctx.graph
                     else:
                         report("validate_graphml", 0)
                         payload, label_key, relationship_key = graphml
-                        ontology = session.ctx.approved_ontology
-                        if ontology is None:
-                            raise ApiError(409, "ontology_required", "Approve an ontology before publishing GraphML")
+                        ontology = require_build_ontology(session)
                         graph = read_graphml(payload, ontology, label_key, relationship_key)
                         context = replace(session.ctx, graph=graph, completed=set(session.ctx.completed),
                                           graph_report={"ok": True, "errors": [], "warnings": []},
                                           build_stats={"quarantine": []})
                         persist(session, actor, version, report, commit, started_at, context=context)
+                    session.published_build = {"project_id": str(session.id), "version_id": version}
+                    with session.status_lock:
+                        mark_step(session.job, PERSISTENCE_STAGE, "completed",
+                                  execution_result(session, PERSISTENCE_STAGE, {
+                                      "nodes": graph.number_of_nodes(), "relationships": graph.number_of_edges(),
+                                  }))
                 with session.status_lock:
                     self._check_cancelled(session)
-                    session.job["status"] = "completed"
+                    status = "completed"
         except ApiError as exc:
-            with session.status_lock:
-                status = "cancelled" if exc.code == "build_cancelled" else "failed"
-                session.job.update(status=status, error={"code": exc.code, "message": exc.message})
+            status = "cancelled" if exc.code == "build_cancelled" else "failed"
+            error = {"code": exc.code, "message": exc.message}
         except Exception:
-            with session.status_lock:
-                session.job.update(status="failed", error={"code": "build_failed", "message": "Build failed"})
+            error = {"code": "build_failed", "message": "Build failed"}
         finally:
-            with session.status_lock:
-                session.job["finished_at"] = datetime.now(timezone.utc).isoformat()
-            session.sync()
-            session.touched = monotonic()
-            session.lock.release()
-            self.slots.release()
+            try:
+                with session.status_lock:
+                    session.sync()
+                    for step in session.job["steps"]:
+                        if step["status"] == "running":
+                            mark_step(session.job, step["stage"], "failed" if status == "failed" else "skipped")
+                        elif step["status"] == "pending":
+                            mark_step(session.job, step["stage"], "skipped")
+                    session.job.update(status=status, error=error, finished_at=datetime.now(timezone.utc).isoformat())
+                session.checkpoint()
+            finally:
+                session.touched = monotonic()
+                session.lock.release()
+                self.slots.release()
 
     def close(self):
         self.pool.shutdown(wait=True, cancel_futures=False)

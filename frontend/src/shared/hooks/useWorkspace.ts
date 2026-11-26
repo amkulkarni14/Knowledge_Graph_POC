@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSessionStore, useGraphStore } from "../../app/store";
 import { sessionsApi } from "../../api/sessionsApi";
 import { ApiError } from "../../api/client";
-import { prerequisites } from "../../constants/stages.constants";
+import { useWorkflowStages } from "./useWorkflowStages";
 export const useSession = () => {
   const id = useSessionStore((s) => s.id);
   return useQuery({
@@ -10,7 +10,9 @@ export const useSession = () => {
     queryFn: ({ signal }) => sessionsApi.read(id!, signal),
     enabled: !!id,
     refetchInterval: (query) =>
-      ["queued", "running", "cancelling", "publishing"].includes(String(query.state.data?.job?.status))
+      ["queued", "running", "cancelling", "publishing"].includes(
+        String(query.state.data?.job?.status),
+      )
         ? 1500
         : 10000,
     retry: false,
@@ -19,14 +21,17 @@ export const useSession = () => {
 export function useWorkspace() {
   const id = useSessionStore((s) => s.id);
   const session = useSession();
+  const workflow = useWorkflowStages();
   return {
     id: id!,
     session,
+    workflow,
     done: session.data?.completed_stages ?? [],
     can: (stage: number) =>
-      (prerequisites[stage] ?? []).every((n) =>
-        session.data?.completed_stages.includes(n),
-      ),
+      workflow.enabled(stage) &&
+      workflow
+        .requires(stage)
+        .every((n) => session.data?.completed_stages.includes(n)),
   };
 }
 export function useAction<T>(

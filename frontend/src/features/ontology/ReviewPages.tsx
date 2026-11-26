@@ -60,7 +60,7 @@ export default function ReviewPages({ mode }: { mode: string }) {
   const validation = useData(
     ["ontology", "validation"],
     (signal) => ontologyApi.validation(id, signal),
-    done.includes(7) && mode === "validation",
+    (done.includes(7) || done.includes(8)) && mode === "validation",
   );
   const versions = useData(
     ["ontology", "versions", ontologyId],
@@ -131,7 +131,7 @@ export default function ReviewPages({ mode }: { mode: string }) {
     ],
     validation: [
       "Validate the ontology",
-      "Inspect structural and semantic findings. Blocking results prevent approval.",
+      "Inspect structural and semantic findings. Blocking results prevent progression.",
     ],
     repository: [
       "Ontology repository",
@@ -379,6 +379,11 @@ export default function ReviewPages({ mode }: { mode: string }) {
             </Button>
           }
         >
+          {session.data?.summary?.ontology?.name && (
+            <p className="mb-3 font-medium">
+              {session.data.summary.ontology.name}
+            </p>
+          )}
           <Feedback
             pending={validate.isPending || validation.isFetching}
             error={validate.error}

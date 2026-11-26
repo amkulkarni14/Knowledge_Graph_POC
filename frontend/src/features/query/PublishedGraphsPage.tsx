@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, MenuItem, TextField } from "@mui/material";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, get, send, sessionPath } from "../../api/client";
+import { api, ApiError, get, send, sessionPath } from "../../api/client";
+import EntityExplorer from "./EntityExplorer";
+import { publishedGraphViews } from "../../constants/publishedGraphViews";
 import { useSessionStore } from "../../app/store";
 import {
   DataTable,
@@ -121,13 +123,15 @@ export default function PublishedGraphsPage() {
   const tool: Tool =
     requested && Object.hasOwn(titles, requested)
       ? (requested as Tool)
-      : "versions";
+      : "explorer";
+  const demoView = publishedGraphViews.some(({ view }) => view === tool);
   const client = useQueryClient();
   const session = useSessionStore((state) => state.id);
   const projects = useQuery({
     queryKey: ["published-projects"],
     queryFn: ({ signal }) =>
       get<Project[]>("/graph-projects", undefined, signal),
+    retry: false,
   });
   const project = params.get("project") || projects.data?.[0]?.project_id || "";
   const base = `/graph-projects/${encodeURIComponent(project)}`;
@@ -163,19 +167,20 @@ export default function PublishedGraphsPage() {
     <>
       <PageHeader
         title={titles[tool]}
-        description="Inspect and manage graph versions published to Neo4j."
+        description={demoView ? "Explore and query graph versions published to Neo4j." : "Inspect and manage graph versions published to Neo4j."}
       />
       <Panel title="Published graph workspace">
         <div className="toolbar">
           <TextField
             select
             label="Workspace view"
-            value={tool}
+            value={demoView ? tool : ""}
             onChange={(e) => set("view", e.target.value)}
+            slotProps={{ select: { displayEmpty: true, renderValue: (value) => value ? titles[value as Tool] : "Choose a published view" }, inputLabel: { shrink: true } }}
           >
-            {Object.entries(titles).map(([key, title]) => (
-              <MenuItem key={key} value={key}>
-                {title}
+            {publishedGraphViews.map(({ view, label }) => (
+              <MenuItem key={view} value={view}>
+                {label}
               </MenuItem>
             ))}
           </TextField>
@@ -215,9 +220,16 @@ export default function PublishedGraphsPage() {
             Session Explorer
           </Button>
         </div>
+        {projects.error instanceof ApiError && projects.error.code === "registry_unconfigured" && (
+          <Alert severity="info">Published graphs are unavailable until an administrator configures the PostgreSQL registry.</Alert>
+        )}
+        {projects.isSuccess && projects.data.length === 0 && (
+          <Alert severity="info">No published graph is available to this account.</Alert>
+        )}
         <Feedback
           pending={projects.isFetching || versions.isFetching}
-          error={projects.error ?? versions.error}
+          error={projects.error instanceof ApiError && projects.error.code === "registry_unconfigured"
+            ? undefined : projects.error ?? versions.error}
         />
       </Panel>
       {tool === "versions" && (
@@ -585,7 +597,7 @@ function Operations({
     <div className="section-gap">
       <Panel title="Build and publish">
         <p className="muted">
-          Reconcile the active workflow's source against its approved ontology
+          Reconcile the active workflow's source against its build-ready ontology
           and publish a new validated version.
         </p>
         <div className="toolbar mt-4">
@@ -667,15 +679,15 @@ function GraphTool({
   initialNode: string;
   onOpen: (id: string) => void;
 }) {
-  if (tool === "explorer" || tool === "query")
-    return (
-      <QueryTools
+  if (tool === "explorer" || tool === "query") {
+    const tools = <QueryTools
         tool={tool}
         path={path}
         initialNode={initialNode}
         onOpen={onOpen}
-      />
-    );
+      />;
+    return tool === "explorer" ? <EntityExplorer path={path}>{tools}</EntityExplorer> : tools;
+  }
   return <VersionReport tool={tool} path={path} />;
 }
 

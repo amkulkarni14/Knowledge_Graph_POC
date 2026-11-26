@@ -61,6 +61,8 @@ describe("workspace mutations", () => {
       id: "first",
       name: "First",
       completed_stages: [1, 2],
+      active: true,
+      reconnect_required: false,
       source_version: 2,
       expires_in_seconds: 3600,
       job: null,

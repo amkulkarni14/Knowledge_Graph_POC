@@ -14,6 +14,7 @@ from backend.app.core.dependencies import CurrentSession, CurrentUser
 from backend.app.dto.models import BuildRequest, Result, StrictModel
 from backend.app.exceptions.handlers import ApiError
 from backend.app.repositories import graph_versions as registry
+from backend.app.services import entity_explorer as entities
 from backend.app.services.cypher_subset import compile_query
 from backend.app.services.graph_exports import CONTENT_TYPES, graphml_response, stream_graph
 from backend.app.services.graph_intelligence import draft_query, grounded_answer, structural_insights
@@ -120,6 +121,34 @@ def read_graph(project, version, statement, **parameters):
 def resolve(project, version, user):
     with registry.registry() as db:
         return registry.select_version(db, project, user.username, str(version))
+
+
+@router.get(TOOLS + "/entities", response_model=Result[dict])
+def entity_search(project: UUID, version: UUID, user: CurrentUser, q: str = Query("", max_length=300),
+                  label: str = Query("", max_length=63), prefix: bool = False):
+    version_row = resolve(project, version, user)
+    term = q.strip()
+    if not term:
+        ontology = (version_row.get("validation") or {}).get("entity_ontology", {})
+        observed = read_graph(project, str(version), entities.PUBLISHED_TYPES, limit=entities.TYPE_LIMIT + 1)
+        types = sorted(set(entities.ontology_types(ontology)) | {row["label"] for row in observed if row["label"]})
+        return {"data": entities.search_result([], types)}
+    rows = read_graph(project, str(version), entities.PUBLISHED_SEARCH, label=label, term=term,
+                      prefix=prefix, limit=entities.MATCH_LIMIT + 1)
+    return {"data": entities.search_result(rows)}
+
+
+@router.get(TOOLS + "/entity-neighborhood", response_model=Result[dict])
+def entity_neighborhood(project: UUID, version: UUID, user: CurrentUser,
+                        node_id: str = Query(min_length=1, max_length=300), hops: int = Query(1, ge=0, le=3)):
+    row = resolve(project, version, user)
+    def adjacent(batch, expanded, limit):
+        return read_graph(project, str(version), entities.PUBLISHED_EDGES, frontier=batch,
+                          expanded=expanded, limit=limit)
+    nodes = read_graph(project, str(version), entities.PUBLISHED_NODE, id=node_id)
+    return {"data": entities.neighborhood(
+        nodes[0] if nodes else None, hops, adjacent, (row.get("validation") or {}).get("entity_ontology"),
+        node_count=row["node_count"], edge_count=row["edge_count"])}
 
 
 @router.get("/graph-projects", response_model=Result[list[dict]])

@@ -467,20 +467,19 @@
   }
   .login-brand {
     display: flex;
+    min-height: 36px;
     align-items: center;
     gap: 12px;
     color: var(--accent);
   }
+  .login-brand svg {
+    flex-shrink: 0;
+  }
   .login-title {
+    white-space: nowrap;
     font-weight: 650;
     color: #203047;
     line-height: 1.2;
-  }
-  .login-subtitle {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--muted);
-    margin-top: 2px;
   }
   .login-heading {
     font-size: 24px;
@@ -575,10 +574,7 @@
   }
   .brand-name {
     line-height: 1.15;
-  }
-  .brand-name > span {
-    color: var(--muted);
-    letter-spacing: 0.06em;
+    white-space: nowrap;
   }
   .sidebar-nav {
     flex: 1;
@@ -714,11 +710,6 @@
   .topbar-context strong {
     color: var(--text-primary);
     font-weight: 600;
-  }
-  .topbar-divider {
-    height: 18px;
-    width: 1px;
-    background: var(--divider);
   }
   .workspace-badge {
     overflow: hidden;
@@ -984,14 +975,6 @@
     background: transparent;
     cursor: pointer;
   }
-  .topbar-right .connection-row {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--muted);
-    font-size: 10px;
-    white-space: nowrap;
-  }
   .sidebar .stage-icon {
     display: none;
   }
@@ -1018,6 +1001,11 @@
   @media (max-width: 1000px) {
     .sidebar {
       width: 220px;
+    }
+    .sidebar .brand {
+      gap: 8px;
+      margin-inline: 0;
+      font-size: 13px;
     }
     .shell-main,
     .shell-main.wide {
@@ -1067,8 +1055,7 @@
       height: 50px;
       padding-inline: 10px;
     }
-    .topbar-context .breadcrumb-muted,
-    .topbar-context .topbar-divider {
+    .topbar-context .breadcrumb-muted {
       display: none;
     }
     .workspace-badge {
@@ -1094,6 +1081,18 @@
     }
     .lifecycle-connector {
       flex: 0 0 14px;
+    }
+  }
+}
+
+@media print {
+  body:has(.business-insights) {
+    .sidebar, .topbar, .workflow-bar, .insights-toolbar,
+    .insights-filter-fields, .insights-network, .business-insights button {
+      display: none !important;
+    }
+    .business-insights .panel {
+      break-inside: avoid;
     }
   }
 }

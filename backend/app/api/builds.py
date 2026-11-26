@@ -6,9 +6,17 @@ from backend.app.core.dependencies import CurrentSession
 from backend.app.dto.models import BuildRequest, Result, Page, Table
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services.workflow import operation, require
-from backend.app.services.builds import run_stage, stage_result
+from backend.app.services.workflow_policy import active_stages
+from backend.app.services.builds import BUILD_STAGES, PERSISTENCE_STAGE, run_stage, stage_result
 
 router = APIRouter(prefix="/sessions/{session_id}/builds", tags=["builds"])
+
+
+@router.get("/pipeline", response_model=Result[dict])
+def pipeline(session: CurrentSession):
+    titles = {item["no"]: item["title"] for item in active_stages(session.workflow_policy)}
+    return {"data": {"steps": [{"stage": stage, "title": titles[stage]} for stage in BUILD_STAGES],
+                     "persistence": {"stage": PERSISTENCE_STAGE, "title": titles[PERSISTENCE_STAGE]}}}
 
 
 @router.post("", status_code=202, response_model=Result[dict])

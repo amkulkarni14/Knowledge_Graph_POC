@@ -1,4 +1,14 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
+ARG INSTALL_SQL_SERVER_DRIVER=false
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates unixodbc libgssapi-krb5-2 \
+    && if [ "$INSTALL_SQL_SERVER_DRIVER" = "true" ]; then \
+      apt-get install -y --no-install-recommends curl \
+      && curl -fsSLo /tmp/microsoft.deb https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
+      && dpkg -i /tmp/microsoft.deb && apt-get update \
+      && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+      && rm /tmp/microsoft.deb; \
+    fi && rm -rf /var/lib/apt/lists/*
+
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

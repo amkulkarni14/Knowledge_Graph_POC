@@ -11,6 +11,7 @@ from backend.app.repositories.graph_versions import authorize
 from backend.app.services import graph_publication
 from backend.app.services.cypher_subset import compile_query
 from backend.app.services.neo_graph import properties
+from kg_pipeline.core.context import PipelineContext
 
 
 @pytest.fixture
@@ -18,9 +19,9 @@ def session():
     graph = nx.MultiDiGraph()
     graph.add_edge("Person:1", "Person:2", key="KNOWS")
     ontology = SimpleNamespace(ontology_id="people", version=1, relationships=[], classes=[])
-    ctx = SimpleNamespace(graph=graph, graph_report={"ok": True, "warnings": []}, approved_ontology=ontology,
-                          build_stats={},
-                          scope=None, mark_done=Mock())
+    ctx = PipelineContext(graph=graph, graph_report={"ok": True, "warnings": []},
+                          approved_ontology=ontology, build_stats={})
+    ctx.mark_done = Mock()
     return SimpleNamespace(id=uuid4(), ctx=ctx)
 
 

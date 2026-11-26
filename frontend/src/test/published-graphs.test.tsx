@@ -47,6 +47,7 @@ describe("published graph workspace", () => {
           versions: [{ build_id: version, status: "ready" }],
         };
       if (url.endsWith("/workspace-items")) return [];
+      if (url.endsWith("/entities")) return { types: ["Order"], matches: [], truncated: false };
       if (url.endsWith("/query"))
         return {
           template: "entities",
@@ -112,5 +113,23 @@ describe("published graph workspace", () => {
     expect(
       screen.queryByRole("button", { name: "Delete version" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("defaults to the explorer and offers only the four demo views", async () => {
+    const user = userEvent.setup();
+    open("");
+    expect(screen.getByRole("heading", { name: "Published Graph Explorer" })).toBeVisible();
+    await user.click(screen.getByRole("combobox", { name: "Workspace view" }));
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Published Graph Explorer", "Query Workbench", "Graph Analytics", "Graph Schema",
+    ]);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["operations", "Graph Operations"], ["intelligence", "Graph Intelligence"], ["graphml", "GraphML Import"],
+  ])("retains the direct %s view", (view, title) => {
+    open(view);
+    expect(screen.getByRole("heading", { name: title })).toBeVisible();
   });
 });

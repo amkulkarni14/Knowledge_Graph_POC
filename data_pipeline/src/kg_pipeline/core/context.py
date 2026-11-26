@@ -52,6 +52,8 @@ class PipelineContext:
     ontology_report: Any = None        # ValidationReport
     approved_ontology: Any = None      # Ontology (approved)
     build_plan: Any = None
+    validated_ontology: Any = None     # Validation-only build input, separate from approvals
+    ontology_validation_digest: str | None = None
     # Stage 11-16
     extraction: Any = None             # ExtractionResult
     dq_report: Any = None
@@ -66,11 +68,16 @@ class PipelineContext:
     completed: set = field(default_factory=set)
     events: list = field(default_factory=list)
 
+    @property
+    def build_ontology(self):
+        return self.validated_ontology if self.validated_ontology is not None else self.approved_ontology
+
     def clear_results_from_schema(self) -> None:
         """A different source makes everything derived from the old one meaningless (Stages 3-16)."""
         self.catalog, self.table_analysis = None, []
         self.manual_ontology, self.ai_items, self.ai_meta = None, [], {}
         self.hybrid_draft = self.ontology_report = self.approved_ontology = self.build_plan = None
+        self.validated_ontology = self.ontology_validation_digest = None
         self.extraction = self.dq_report = self.clean = self.graph = None
         self.build_stats = self.graph_report = self.snapshot = None
 

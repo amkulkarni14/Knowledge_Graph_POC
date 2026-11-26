@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   TextField,
   MenuItem,
   Alert,
-  LinearProgress,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
 } from "@mui/material";
 import { buildsApi, metadataApi } from "../../api/workflowApi";
-import { sessionsApi } from "../../api/sessionsApi";
+import { ChevronDown } from "lucide-react";
+import { stageNavigation } from "../../constants/stageNavigation";
 import {
   useAction,
   useData,
@@ -22,21 +25,14 @@ import {
   Panel,
   Report,
   Confirm,
-  StatusChip,
 } from "../../shared/ui/WorkspaceUi";
-import type { Schema } from "../../types/common.types";
-const titles: Record<number, string> = {
-  10: "Build planning",
-  11: "Data extraction",
-  12: "Data quality",
-  13: "Data cleaning",
-  14: "Graph construction",
-  15: "Graph validation",
-};
+import { BuildMonitor, buildStageTitle } from "./BuildMonitor";
+import type { Job, Schema } from "../../types/common.types";
 function BuildPage() {
   const { stage: stageParam } = useParams();
   const stage = Number(stageParam ?? 10);
-  const { id, done, can } = useWorkspace();
+  const { id, done, can, session } = useWorkspace();
+  const savedConfiguration = session.data?.build_configuration;
   const [batch, setBatch] = useState(5000);
   const [rules, setRules] = useState<Schema<"BuildRequest">["business_rules"]>(
     {},
@@ -51,7 +47,7 @@ function BuildPage() {
   const [kind, setKind] = useState("merges");
   const [offset, setOffset] = useState(0);
   const [confirm, setConfirm] = useState(false);
-  const [eventOffset, setEventOffset] = useState(0);
+
   const status = useQuery({
     queryKey: ["workspace", id, "build", "status"],
     queryFn: ({ signal }) => buildsApi.status(id, signal),
@@ -64,7 +60,7 @@ function BuildPage() {
   const client = useQueryClient();
   const jobStatus = status.data?.status;
   useEffect(() => {
-    if (jobStatus && ["completed", "blocked", "failed", "cancelled"].includes(jobStatus))
+    if (jobStatus && ["completed", "blocked", "failed", "cancelled", "interrupted"].includes(jobStatus))
       void client.invalidateQueries({ queryKey: ["workspace", id, "session"] });
   }, [jobStatus, id, client]);
   const busy =
@@ -73,16 +69,12 @@ function BuildPage() {
     batch_size: batch,
     business_rules: Object.keys(rules ?? {}).length ? rules : undefined,
   };
-  const start = useAction((sid) => buildsApi.start(sid, config));
+  const start = useAction(async (sid) => {
+    const job = await buildsApi.start(sid, config);
+    client.setQueryData<Job>(["workspace", sid, "build", "status"], job);
+    return job;
+  }, { invalidate: false });
   const run = useAction((sid) => buildsApi.run(sid, stage, config));
-  const result = useData(
-    ["build", "result", stage, status.data?.status],
-    (signal) => buildsApi.result(id, stage, signal),
-    !busy &&
-      (done.includes(stage) ||
-        (stage === 12 && done.includes(11)) ||
-        (stage === 15 && done.includes(14))),
-  );
   const catalog = useData(
     ["catalog"],
     (signal) => metadataApi.catalog(id, signal),
@@ -98,47 +90,29 @@ function BuildPage() {
     (signal) => buildsApi.cleaning(id, kind, offset, signal),
     !busy && done.includes(13) && stage === 13,
   );
-  const events = useQuery({
-    queryKey: ["workspace", id, "build", "events", eventOffset],
-    queryFn: ({ signal }) => sessionsApi.events(id, eventOffset, signal),
-    refetchInterval: busy ? 2000 : false,
-    retry: false,
-  });
-  if (!titles[stage])
-    return (
-      <Alert severity="error">Choose a build stage from 10 through 15.</Alert>
-    );
-  return (
-    <>
-      <PageHeader
-        eyebrow="Graph Construction"
-        title={titles[stage]}
-        description="Execute a single stage or run the complete build from planning through validation. Snapshot storage is a separate operation."
-        action={
-          <Button
-            variant="contained"
-            disabled={
-              !can(stage) ||
-              busy ||
-              run.isPending ||
-              !Number.isInteger(batch) ||
-              batch < 1 ||
-              batch > 100000
-            }
-            onClick={() => run.mutate()}
-          >
-            Run stage {stage}
-          </Button>
-        }
-      />
-      <Feedback
-        pending={run.isPending || start.isPending}
-        error={run.error || start.error}
-      />
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.5fr] gap-5">
-        <div className="flex flex-col gap-5">
-          <Panel title="Build configuration">
-            <div className="form-stack">
+  const pipeline = useData(["build", "pipeline"], (signal) => buildsApi.pipeline(id, signal));
+  if (!pipeline.data) return <Feedback pending={pipeline.isPending} error={pipeline.error} />;
+  const first = pipeline.data.steps[0].stage;
+  const definition = pipeline.data.steps.find((item) => item.stage === stage);
+  if (!definition) return <Alert severity="error">Choose a pipeline stage from the sidebar.</Alert>;
+  const stageName = buildStageTitle(definition, first);
+  const validBatch = Number.isInteger(batch) && batch >= 1 && batch <= 100000;
+  const disabled = busy || start.isPending || run.isPending || status.isPending || !!status.error;
+  const configuration = (
+    <Accordion disableGutters variant="outlined">
+      <AccordionSummary expandIcon={<ChevronDown size={17} />} id="build-config" aria-controls="build-config-content">
+        <strong>Build configuration</strong>
+      </AccordionSummary>
+      <AccordionDetails>
+        <fieldset className="form-stack min-w-0" disabled={disabled}>
+              {savedConfiguration && (
+                <Button disabled={busy} onClick={() => {
+                  setBatch(savedConfiguration.batch_size ?? 5000);
+                  setRules(savedConfiguration.business_rules ?? {});
+                }}>
+                  Restore saved build settings
+                </Button>
+              )}
               <TextField
                 label="Extraction batch size"
                 type="number"
@@ -227,71 +201,28 @@ function BuildPage() {
               {!!Object.keys(rules ?? {}).length && (
                 <Button onClick={() => setRules({})}>Clear rules</Button>
               )}
-              <Button
-                variant="contained"
-                disabled={
-                  !can(10) ||
-                  busy ||
-                  !Number.isInteger(batch) ||
-                  batch < 1 ||
-                  batch > 100000
-                }
-                onClick={() => setConfirm(true)}
-              >
-                Run full build · stages 10–15
-              </Button>
-            </div>
-          </Panel>
-          <Panel title="Stage navigation">
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(titles).map(([n, t]) => (
-                <Button
-                  key={n}
-                  component={Link}
-                  to={`/build/${n}`}
-                  variant={stage === Number(n) ? "contained" : "outlined"}
-                  size="small"
-                >
-                  {n} · {t}
-                </Button>
-              ))}
-            </div>
-          </Panel>
-        </div>
-        <div className="flex flex-col gap-5">
-          <Panel
-            title="Build execution"
-            action={
-              <StatusChip done={status.data?.status === "completed"}>
-                {status.data?.status ?? "Not started"}
-              </StatusChip>
-            }
-          >
-            <Feedback error={status.error} />
-            {busy && <LinearProgress className="mb-4" />}
-            <Report value={status.data} />
-            {status.data?.status === "blocked" && (
-              <Alert severity="warning">
-                The build stopped at a blocking validation stage. Review its
-                report before continuing.
-              </Alert>
-            )}
-            {stage !== 15 && status.data?.status === "completed" && (
-              <Button component={Link} to="/storage">
-                Go to Storage &amp; Snapshots
-              </Button>
-            )}
-          </Panel>
-          <Panel title="Stage results">
-            <Feedback
-              pending={result.isFetching}
-              error={done.includes(stage) ? result.error : undefined}
-            />
-            <Report value={result.data} />
-          </Panel>
-        </div>
-      </div>
-      {stage === 11 && done.includes(11) && (
+        </fieldset>
+      </AccordionDetails>
+    </Accordion>
+  );
+  return (
+    <>
+      <PageHeader
+        eyebrow="Graph Construction"
+        title={stage === first ? stageNavigation[stage].title : stageName}
+        description="Configure, execute, and monitor the knowledge graph construction pipeline."
+        action={<div className="toolbar">
+          {stageParam && <Button variant="outlined" disabled={disabled || !can(stage) || !validBatch}
+            onClick={() => run.mutate()}>Run {stageName}</Button>}
+          <Button variant="contained" disabled={disabled || !can(first) || !validBatch}
+            onClick={() => setConfirm(true)}>Build Knowledge Graph</Button>
+        </div>}
+      />
+      <Feedback pending={run.isPending || start.isPending} error={run.error || start.error} />
+      <BuildMonitor id={id} pipeline={pipeline.data} job={status.data} busy={busy}
+        workspace={session.data} selected={stageParam ? stage : undefined} error={status.error} configuration={configuration}>
+        {(activeStage) => <>
+      {activeStage === 11 && stage === 11 && !busy && done.includes(11) && (
         <div className="section-gap">
           <Panel title="Extracted rows">
             <TextField
@@ -320,7 +251,7 @@ function BuildPage() {
           </Panel>
         </div>
       )}
-      {stage === 13 && done.includes(13) && (
+      {activeStage === 13 && stage === 13 && !busy && done.includes(13) && (
         <div className="section-gap">
           <Panel title="Cleaning findings">
             <TextField
@@ -348,43 +279,13 @@ function BuildPage() {
           </Panel>
         </div>
       )}
-      <div className="section-gap">
-        <Panel title="Execution events">
-          <Feedback error={events.error} />
-          <DataTable rows={events.data?.items ?? []} />
-          <div className="toolbar mt-3">
-            <Button
-              disabled={eventOffset === 0}
-              onClick={() => setEventOffset(Math.max(0, eventOffset - 100))}
-            >
-              Previous
-            </Button>
-            <span className="muted">
-              {eventOffset}–{eventOffset + (events.data?.items.length ?? 0)} of{" "}
-              {events.data?.total ?? 0}
-            </span>
-            <Button
-              disabled={eventOffset + 100 >= (events.data?.total ?? 0)}
-              onClick={() => setEventOffset(eventOffset + 100)}
-            >
-              Next
-            </Button>
-          </div>
-        </Panel>
-      </div>
-      <Confirm
-        open={confirm}
-        title="Start the complete graph build?"
+        </>}
+      </BuildMonitor>
+      <Confirm open={confirm} title="Build Knowledge Graph?"
         onClose={() => setConfirm(false)}
-        onConfirm={() =>
-          start.mutate(undefined, { onSuccess: () => setConfirm(false) })
-        }
-        pending={start.isPending}
-      >
-        <p>
-          This executes stages 10–15 with the current approved ontology and
-          configured rules. Saving a snapshot remains a separate action.
-        </p>
+        onConfirm={() => start.mutate(undefined, { onSuccess: () => setConfirm(false) })}
+        pending={start.isPending}>
+        <p>Run the pipeline with the current ontology and business rules. Saving a snapshot is a separate action.</p>
         <Feedback error={start.error} />
       </Confirm>
     </>
@@ -393,5 +294,6 @@ function BuildPage() {
 
 export default function BuildRoute() {
   const { stage } = useParams();
-  return <BuildPage key={stage ?? "all"} />;
+  const { id } = useWorkspace();
+  return <BuildPage key={id + "/" + (stage ?? "all")} />;
 }

@@ -193,8 +193,8 @@ def validate_ontology(onto: Ontology, catalog: Optional[SchemaCatalog] = None,
     return report
 
 
-def run(ctx: PipelineContext, approved: Optional[Ontology] = None) -> ValidationReport:
-    draft = ctx.hybrid_draft or ctx.manual_ontology
+def run(ctx: PipelineContext, approved: Optional[Ontology] = None, *, draft: Optional[Ontology] = None) -> ValidationReport:
+    draft = draft if draft is not None else ctx.hybrid_draft or ctx.manual_ontology
     if draft is None:
         raise RuntimeError("Stage 5/7 must run first")
     report = validate_ontology(draft, ctx.catalog, approved)

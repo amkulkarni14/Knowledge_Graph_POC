@@ -124,7 +124,7 @@ def read_graphml(payload, ontology=None, label_key="label", relationship_key="ty
         relation = relationships.get(signature)
         key = record.get("key", source.get("_kg_edge_key", identifier if identifier is not None else f"edge-{index}"))
         if (ontology is not None and not relation) or not isinstance(key, str) or not key or len(key) > 300 or graph.has_edge(start, end, key):
-            raise invalid("Relationship conflicts with the approved ontology or duplicates an edge")
+            raise invalid("Relationship conflicts with the workspace ontology or duplicates an edge")
         attributes = mapped(source, relation.properties) if relation else {}
         attributes["type"] = kind
         graph.add_edge(start, end, key=key, **attributes)

@@ -63,8 +63,9 @@ def list_ontologies(root, owner):
                     ontologies[ontology_id] = (versions[0].name, [summary(item, item.version) for item in versions])
         for path in sorted((workspace / "working_drafts").glob("*.json")):
             draft = Ontology.model_validate_json(path.read_text(encoding="utf-8"))
-            _, versions = ontologies.setdefault(draft.ontology_id, (draft.name, []))
+            _, versions = ontologies.get(draft.ontology_id, (draft.name, []))
             versions.append(summary(draft, None))
+            ontologies[draft.ontology_id] = (draft.name, versions)
         results.extend({"workspace_id": workspace_id, "workspace_name": workspace_name,
                         "ontology_id": ontology_id, "name": name, "versions": versions}
                        for ontology_id, (name, versions) in ontologies.items())

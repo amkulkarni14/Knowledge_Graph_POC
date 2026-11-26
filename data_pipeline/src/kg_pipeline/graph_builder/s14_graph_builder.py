@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 import networkx as nx
 
 from kg_pipeline.core.context import PipelineContext
+from kg_pipeline.core.entity_metadata import entity_metadata
 from kg_pipeline.preprocessing.transform import CoercionError
 from kg_pipeline.preprocessing.transform import canon_key
 from kg_pipeline.preprocessing.transform import coerce
@@ -24,7 +25,7 @@ from kg_pipeline.preprocessing.transform import coerce
 def run(ctx: PipelineContext) -> nx.MultiDiGraph:
     if ctx.clean is None or not ctx.is_done(13):
         raise RuntimeError("Stage 13 must run first")
-    onto, source, clean = ctx.approved_ontology, ctx.extraction.staged, ctx.clean
+    onto, source, clean = ctx.build_ontology, ctx.extraction.staged, ctx.clean
     G = nx.MultiDiGraph()
     stats = {"classes": {}, "relationships": {}}
     quarantine = list(clean.quarantine)
@@ -90,10 +91,13 @@ def run(ctx: PipelineContext) -> nx.MultiDiGraph:
                     + (f", {st['duplicates']} merged duplicates" if st["duplicates"] else ""))
 
     G.graph.update({"ontology_id": onto.ontology_id, "ontology_version": onto.version,
+                    "entity_ontology": entity_metadata(onto, ctx.scope.sensitive_columns if ctx.scope else ()),
                     "namespace": onto.namespace, "built_at": datetime.now(timezone.utc).isoformat(),
                     "source": ctx.source_info.get("name", ""), "source_watermarks": ctx.extraction.watermarks,
                     "build_mode": ctx.extraction.mode})
     ctx.invalidate_from(14)
+    if ctx.ontology_validation_digest is not None:
+        G.graph["ontology_validation_digest"] = ctx.ontology_validation_digest
     ctx.graph = G
     ctx.build_stats = {**stats, "quarantine": quarantine}
     ctx.log(14, f"NetworkX MultiDiGraph built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")

@@ -1,3 +1,9 @@
+import {
+  stageForPath,
+  stageOrder,
+  stageRoutes,
+} from "./constants/stages.constants";
+import { useWorkflowStages } from "./shared/hooks/useWorkflowStages";
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +23,10 @@ const Review = lazy(() => import("./features/ontology/ReviewPages"));
 const Build = lazy(() => import("./features/build/BuildPage"));
 const Storage = lazy(() => import("./features/build/StoragePage"));
 const Explorer = lazy(() => import("./features/query/ExplorerPage"));
-const PublishedGraphs = lazy(() => import("./features/query/PublishedGraphsPage"));
+const BusinessInsights = lazy(() => import("./features/query/BusinessInsightsPage"));
+const PublishedGraphs = lazy(
+  () => import("./features/query/PublishedGraphsPage"),
+);
 export function App() {
   const token = useAuthStore((s) => s.token);
   const client = useQueryClient();
@@ -49,6 +58,25 @@ function AuthGate({ token }: { token: string }) {
 
 function Workspace() {
   const id = useSessionStore((s) => s.id);
+  const workflow = useWorkflowStages();
+  function ontologyStage(mode: string) {
+    if (workflow.query.isPending) return <Feedback pending />;
+    if (workflow.query.isError) return <Navigate to="/" replace />;
+    const stage = stageForPath(`/${mode}`)!;
+    if (workflow.enabled(stage))
+      return <Review key={`${id}-${mode}`} mode={mode} />;
+    const previous = stageOrder
+      .slice(0, stageOrder.indexOf(stage))
+      .filter(workflow.enabled)
+      .at(-1);
+    return (
+      <Navigate
+        key={mode}
+        to={previous ? stageRoutes[previous] : "/"}
+        replace
+      />
+    );
+  }
   return (
     <AppShell>
       <Suspense fallback={<Feedback pending />}>
@@ -56,6 +84,7 @@ function Workspace() {
           <Route path="/" element={<Overview />} />
           <Route path="/domains" element={<Domains />} />
           <Route path="/published-graphs" element={<PublishedGraphs />} />
+          <Route path="/business-insights" element={<BusinessInsights />} />
           {id && (
             <>
               <Route path="/scope" element={<Scope />} />
@@ -68,7 +97,7 @@ function Workspace() {
                   <Route
                     key={mode}
                     path={`/${mode}`}
-                    element={<Review key={`${id}-${mode}`} mode={mode} />}
+                    element={ontologyStage(mode)}
                   />
                 ),
               )}

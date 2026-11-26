@@ -85,6 +85,8 @@ def save_graph(G: nx.MultiDiGraph, validation: dict, quarantine: list, root: Pat
         "files": {p.name: _sha256(p) for p in sorted(out.iterdir())},
         "published": bool(validation["ok"]),
     }
+    if digest := G.graph.get("ontology_validation_digest"):
+        manifest["ontology_validation_digest"] = digest
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
     if validation["ok"]:
         (root / G.graph["ontology_id"] / "CURRENT").write_text(build_id, encoding="utf-8")

@@ -51,9 +51,9 @@ def make_plan(onto: Ontology) -> dict:
 
 
 def run(ctx: PipelineContext) -> dict:
-    if ctx.approved_ontology is None:
-        raise RuntimeError("Stage 9 must run first: only an APPROVED ontology can be built")
-    plan = make_plan(ctx.approved_ontology)
+    if ctx.build_ontology is None:
+        raise RuntimeError("A build-ready ontology is required")
+    plan = make_plan(ctx.build_ontology)
     ctx.invalidate_from(10)
     ctx.build_plan = plan
     ctx.log(10, f"Build plan: {len(plan['nodes'])} node types and {len(plan['edges'])} edge types "

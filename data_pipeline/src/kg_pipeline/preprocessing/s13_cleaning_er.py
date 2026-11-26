@@ -37,7 +37,7 @@ class CleanResult:
 def run(ctx: PipelineContext, max_changes_shown: int = 500) -> CleanResult:
     if not ctx.is_done(12):
         raise RuntimeError("Stage 12 must pass first (no blocking data quality findings)")
-    onto, source = ctx.approved_ontology, ctx.extraction.staged
+    onto, source = ctx.build_ontology, ctx.extraction.staged
     rules = ctx.dq_report.get("rules", {})
     res = CleanResult()
 

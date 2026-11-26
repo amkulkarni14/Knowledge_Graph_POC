@@ -4,6 +4,7 @@ import type {
   JsonObject,
   Page,
   Job,
+  BuildPipeline,
   GraphSelection,
 } from "../types/common.types";
 export const scopeApi = {
@@ -13,6 +14,8 @@ export const scopeApi = {
     send<JsonObject>("PUT", p(id, "/scope"), body),
 };
 export const sourcesApi = {
+  schema: (id: string, signal?: AbortSignal) =>
+    get<Record<string, string[]>>(p(id, "/sources/schema"), undefined, signal),
   read: (id: string, signal?: AbortSignal) =>
     get<JsonObject>(p(id, "/sources"), undefined, signal),
   postgres: (id: string, body: Schema<"PostgresRequest">) =>
@@ -58,8 +61,8 @@ export const ontologyApi = {
     ),
   replace: (id: string, body: Schema<"OntologyRequest">) =>
     send<Schema<"Ontology">>("PUT", p(id, "/ontology/draft"), body),
-  save: (id: string) =>
-    send<Schema<"Ontology">>("POST", p(id, "/ontology/draft/save")),
+  save: (id: string, body: Schema<"SaveDraftRequest">) =>
+    send<Schema<"Ontology">>("POST", p(id, "/ontology/draft/save"), body),
   revert: (id: string) =>
     send<Schema<"Ontology">>("POST", p(id, "/ontology/draft/revert")),
   addClass: (id: string, body: Schema<"ClassRequest">) =>
@@ -152,6 +155,8 @@ export const ontologyApi = {
     ),
 };
 export const buildsApi = {
+  pipeline: (id: string, signal?: AbortSignal) =>
+    get<BuildPipeline>(p(id, "/builds/pipeline"), undefined, signal),
   start: (id: string, body: Schema<"BuildRequest">) =>
     send<Job>("POST", p(id, "/builds"), body),
   status: (id: string, signal?: AbortSignal) =>

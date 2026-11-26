@@ -67,11 +67,11 @@ def connect_csv(ctx: PipelineContext, uploads: Sequence[CsvUpload], limits: Uplo
 
 
 def connect_postgres(ctx: PipelineContext, host: str, port: int, dbname: str, user: str, password: str,
-                     sslmode: str = "prefer", schemas: list[str] | None = None) -> dict:
+                     sslmode: str = "prefer", schemas: list[str] | None = None, hostaddr: str | None = None) -> dict:
     from kg_pipeline.preprocessing.connectors.postgres_source import PostgresSource
 
     src = PostgresSource(host=host, port=port, dbname=dbname, user=user, password=password,
-                         sslmode=sslmode, schemas=schemas or ["public"])
+                         sslmode=sslmode, schemas=schemas or ["public"], hostaddr=hostaddr)
     try:
         info = src.ping()
     except Exception:
@@ -84,3 +84,12 @@ def connect_postgres(ctx: PipelineContext, host: str, port: int, dbname: str, us
     ctx.log(2, "Connected to the PostgreSQL source with a read-only session and statement timeout")
     ctx.mark_done(2)
     return ctx.source_info
+
+
+def activate_source(ctx: PipelineContext, source, info: dict) -> dict:
+    _replace_source(ctx, source)
+    ctx.source_info = info
+    if source is not None:
+        ctx.mark_done(2)
+    ctx.log(2, "Data source selection confirmed" if source is not None else "Data source disconnected")
+    return info

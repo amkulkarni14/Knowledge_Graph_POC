@@ -4,7 +4,7 @@ import { Alert, Button, MenuItem, TextField } from "@mui/material";
 import { Link } from "react-router-dom";
 import { api, get, send, sessionPath } from "../../api/client";
 import { useSessionStore } from "../../app/store";
-import { stageOrder, stageRoutes } from "../../constants/stages.constants";
+import { stageRoutes } from "../../constants/stages.constants";
 import { stageNavigation } from "../../constants/stageNavigation";
 import { useWorkspace } from "../../shared/hooks/useWorkspace";
 import {
@@ -302,12 +302,12 @@ export function IntelligenceTools({
 
 export function GraphmlImport() {
   const session = useSessionStore((state) => state.id);
-  const { done, session: workflow } = useWorkspace();
-  const approved = done.includes(9);
-  const approvalStep = stageOrder.find(
-    (stage) => stage <= 9 && !done.includes(stage),
-  );
-  const importStage = approvalStep ? stageNavigation[approvalStep] : undefined;
+  const { done, session: workspace, workflow } = useWorkspace();
+  const gate = workflow.validationOnly ? 8 : 9;
+  const ontologyReady = workflow.enabled(gate) && done.includes(gate);
+  const requiredStep = workflow.order.find((stage) => stage <= gate && !done.includes(stage));
+  const requiredAction = workflow.validationOnly ? "Validate" : "Approve";
+  const importStage = requiredStep ? stageNavigation[requiredStep] : undefined;
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [labelKey, setLabelKey] = useState("label");
@@ -345,19 +345,19 @@ export function GraphmlImport() {
             Open or create a workspace to preview a GraphML file.
           </Alert>
         )}
-        {session && !workflow.isPending && !approved && (
+        {session && !workspace.isPending && !workflow.query.isPending && !ontologyReady && (
           <Alert
             severity="info"
             action={
-              approvalStep &&
+              requiredStep &&
               importStage && (
-                <Button component={Link} to={stageRoutes[approvalStep]}>
+                <Button component={Link} to={stageRoutes[requiredStep]}>
                   Go to {importStage.title}
                 </Button>
               )
             }
           >
-            You can preview the file now. Approve an ontology in this workflow
+            You can preview the file now. {requiredAction} an ontology in this workflow
             to publish it.
           </Alert>
         )}
@@ -412,17 +412,17 @@ export function GraphmlImport() {
           <div className="toolbar">
             <Button
               variant="contained"
-              disabled={!session || !file || busy || workflow.isPending}
+              disabled={!session || !file || busy || workspace.isPending}
               onClick={() => preview.mutate()}
             >
-              {approved ? "Validate and preview" : "Preview GraphML"}
+              {ontologyReady ? "Validate and preview" : "Preview GraphML"}
             </Button>
             <Button
               disabled={
                 preview.data?.ontology_validated !== true ||
                 busy ||
                 !session ||
-                !approved ||
+                !ontologyReady ||
                 !!publish.data
               }
               onClick={() => publish.mutate()}
@@ -438,7 +438,7 @@ export function GraphmlImport() {
           <Feedback pending={busy} error={preview.error ?? publish.error} />
           {preview.data?.ontology_validated === false && (
             <Alert severity="info">
-              Structure checked. Validate again after approving an ontology to
+              Structure checked. Preview again after preparing the ontology to
               enable publishing.
             </Alert>
           )}

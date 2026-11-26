@@ -1,5 +1,5 @@
 import { AttributeEditor } from "./AttributeEditor";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ChangeEvent } from "react";
 import { Button, TextField, MenuItem, Tabs, Tab, Alert } from "@mui/material";
 import { type Node } from "@xyflow/react";
 import { OntologyCanvas } from "./OntologyCanvas";
@@ -26,7 +26,8 @@ export default function OntologyPage() {
   const { id, done, can } = useWorkspace();
   const [mode, setMode] = useState<Schema<"DraftRequest">["mode"]>("schema");
   const [ontologyId, setOntologyId] = useState("knowledge-graph");
-  const [name, setName] = useState("Knowledge Graph");
+  const [editedName, setEditedName] = useState<string>();
+  const [nameError, setNameError] = useState("");
   const [author, setAuthor] = useState("data.modeller");
   const [tab, setTab] = useState(0);
   const [selected, setSelected] = useState("");
@@ -59,16 +60,30 @@ export default function OntologyPage() {
     done.includes(3),
   );
   const onto = draft.data;
+  const name = editedName ?? onto?.name ?? "Knowledge Graph";
+  const nameField = {
+    label: "Ontology Name",
+    placeholder: "Customer 360 Ontology",
+    required: true,
+    value: name,
+    error: !!nameError,
+    helperText: nameError,
+    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+      setEditedName(event.target.value);
+      setNameError("");
+      save.reset();
+    },
+  };
   const create = useAction((sid) =>
     ontologyApi.create(sid, {
       mode,
       ontology_id: ontologyId,
-      name,
+      name: name.trim(),
       namespace: `com.example.${ontologyId}`,
       author,
     }),
   );
-  const save = useAction((sid) => ontologyApi.save(sid));
+  const save = useAction((sid) => ontologyApi.save(sid, { name: name.trim() }));
   const revert = useAction((sid) => ontologyApi.revert(sid));
   const add = useAction((sid) =>
     ontologyApi.addClass(sid, {
@@ -177,24 +192,48 @@ export default function OntologyPage() {
       setParseError("Enter valid JSON before applying changes.");
     }
   }
+  function submitName(run: () => void) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setNameError("Enter an ontology name.");
+    } else if (Array.from(trimmed).length > 200) {
+      setNameError("Use 200 characters or fewer.");
+    } else {
+      run();
+    }
+  }
   return (
     <>
       <PageHeader
         eyebrow="Ontology Engineering"
         title="Ontology studio"
-        description="Model classes, relationships, and source mappings. Editor changes invalidate downstream results; save your draft before review."
+        description="Model classes, relationships, and source mappings. Save your draft before continuing."
         action={
           <div className="toolbar">
             <Button
-              disabled={!onto || revert.isPending}
-              onClick={() => revert.mutate()}
+              disabled={!onto || revert.isPending || save.isPending}
+              onClick={() =>
+                revert.mutate(undefined, {
+                  onSuccess: () => {
+                    setEditedName(undefined);
+                    setNameError("");
+                    save.reset();
+                  },
+                })
+              }
             >
               Revert saved draft
             </Button>
             <Button
               variant="contained"
-              disabled={!onto || save.isPending}
-              onClick={() => save.mutate()}
+              disabled={!onto || save.isPending || revert.isPending}
+              onClick={() =>
+                submitName(() =>
+                  save.mutate(undefined, {
+                    onSuccess: () => setEditedName(undefined),
+                  }),
+                )
+              }
             >
               Save draft
             </Button>
@@ -205,6 +244,7 @@ export default function OntologyPage() {
         pending={save.isPending || revert.isPending}
         error={save.error || revert.error}
       />
+      {save.isSuccess && <Alert severity="success">Ontology draft saved.</Alert>}
       {!onto ? (
         <Panel title="Initialize an ontology">
           <div className="form-stack">
@@ -229,11 +269,7 @@ export default function OntologyPage() {
                 value={ontologyId}
                 onChange={(e) => setOntologyId(e.target.value)}
               />
-              <TextField
-                label="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <TextField {...nameField} disabled={create.isPending} />
               <TextField
                 label="Author"
                 value={author}
@@ -243,7 +279,13 @@ export default function OntologyPage() {
             <Button
               variant="contained"
               disabled={!can(5) || create.isPending}
-              onClick={() => create.mutate()}
+              onClick={() =>
+                submitName(() =>
+                  create.mutate(undefined, {
+                    onSuccess: () => setEditedName(undefined),
+                  }),
+                )
+              }
             >
               Create draft
             </Button>
@@ -257,6 +299,14 @@ export default function OntologyPage() {
         </Panel>
       ) : (
         <>
+          <div className="max-w-lg">
+            <TextField
+              {...nameField}
+              fullWidth
+              size="small"
+              disabled={save.isPending || revert.isPending}
+            />
+          </div>
           <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5">
             <Panel
               title={onto.name}

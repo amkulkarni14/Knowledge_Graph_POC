@@ -16,7 +16,7 @@ test("opens a live Neo4j graph, expands an entity, and visualizes a scoped query
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("link", { name: "Published Graphs" }).click();
   await expect(
-    page.getByRole("heading", { name: "Graph Versions", exact: true }),
+    page.getByRole("heading", { name: "Published Graph Explorer", exact: true }),
   ).toBeVisible();
   await page.getByRole("combobox", { name: "Workspace view" }).click();
   await page.getByRole("option", { name: "Published Graph Explorer" }).click();
@@ -42,7 +42,9 @@ test("opens a live Neo4j graph, expands an entity, and visualizes a scoped query
   await expect(
     page.getByRole("img", { name: /Knowledge graph with 1 visible nodes/ }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Graph Intelligence", exact: true }).click();
+  const intelligenceUrl = new URL(page.url());
+  intelligenceUrl.searchParams.set("view", "intelligence");
+  await page.goto(intelligenceUrl.toString());
   await page.getByRole("textbox", { name: "Anchor node ID" }).fill("Order:1001");
   await page.getByRole("button", { name: "Analyze neighborhood" }).click();
   await expect(page.getByRole("heading", { name: "Candidate links" })).toBeVisible();

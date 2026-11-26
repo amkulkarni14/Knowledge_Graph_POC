@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Any, Iterator, Optional
 
@@ -22,7 +23,7 @@ log = logging.getLogger(__name__)
 
 COLUMNS_SQL = """
 SELECT n.nspname || '.' || c.relname AS table_name, a.attname AS column_name,
-       format_type(a.atttypid, NULL) AS pg_type, NOT a.attnotnull AS nullable
+       format_type(a.atttypid, NULL) AS pg_type, NOT a.attnotnull AS nullable, c.relkind
 FROM pg_attribute a
 JOIN pg_class c     ON c.oid = a.attrelid
 JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -58,7 +59,7 @@ WHERE c.relkind IN ('r', 'p') AND n.nspname = ANY(%(schemas)s)
 class PostgresSource:
     def __init__(self, host: str, dbname: str, user: str, password: str, port: int | str = 5432,
                  sslmode: str = "prefer", schemas: Optional[list[str]] = None,
-                 statement_timeout_ms: int = 300_000, max_size: int = 4):
+                 statement_timeout_ms: int = 300_000, max_size: int = 4, hostaddr: str | None = None):
         import psycopg
         from psycopg_pool import ConnectionPool
 
@@ -66,7 +67,7 @@ class PostgresSource:
         self.schemas = schemas or ["public"]
         self.name = "PostgreSQL source"
         conninfo = psycopg.conninfo.make_conninfo(
-            host=host, port=str(port), dbname=dbname, user=user, password=password, sslmode=sslmode,
+            host=host, hostaddr=hostaddr, port=str(port), dbname=dbname, user=user, password=password, sslmode=sslmode,
             application_name="kg-networkx-builder", connect_timeout="10",
             options=f"-c statement_timeout={int(statement_timeout_ms)} -c default_transaction_read_only=on",
         )
@@ -86,8 +87,8 @@ class PostgresSource:
         tables: dict[str, TableInfo] = {}
         with self.pool.connection() as conn, conn.cursor() as cur:
             cur.execute(COLUMNS_SQL, params)
-            for table, col, pg_type, nullable in cur.fetchall():
-                t = tables.setdefault(table, TableInfo(name=table, columns={}))
+            for table, col, pg_type, nullable, kind in cur.fetchall():
+                t = tables.setdefault(table, TableInfo(name=table, columns={}, asset_kind="view" if kind in {"v", "m"} else "table"))
                 t.columns[col] = ColumnInfo(name=col, pg_type=pg_type, nullable=nullable)
             cur.execute(CONSTRAINTS_SQL, params)
             for table, kind, cols, ref_table, ref_cols in cur.fetchall():
@@ -129,6 +130,22 @@ class PostgresSource:
         select_cols = list(dict.fromkeys(list(key_columns) + list(columns)))
         cols_sql = sql.SQL(", ").join(sql.Identifier(c) for c in select_cols)
         keys_sql = sql.SQL(", ").join(sql.Identifier(c) for c in key_columns)
+        info = self._catalog.tables[table]
+        keyset = bool(key_columns) and self._catalog.is_unique(table, key_columns) and all(
+            not info.columns[column].nullable for column in key_columns)
+        if not keyset:
+            if start_after is not None:
+                raise ValueError("Resuming a read requires a unique non-null key")
+            params = [since] if since is not None and watermark_column else []
+            where = sql.SQL(" WHERE {} >= %s").format(sql.Identifier(watermark_column)) if params else sql.SQL("")
+            query = sql.SQL("SELECT {} FROM {}.{}{}").format(
+                cols_sql, sql.Identifier(schema), sql.Identifier(name), where)
+            with self.pool.connection() as conn, conn.cursor(
+                    name=f"kg_{uuid4().hex}", row_factory=self._psycopg.rows.dict_row) as cur:
+                cur.execute(query, params)
+                while rows := cur.fetchmany(batch_size):
+                    yield rows
+            return
         last_key = start_after
         while True:
             conds, params = [], []

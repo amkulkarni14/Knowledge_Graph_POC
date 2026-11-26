@@ -25,6 +25,8 @@ def checked_path(session, ontology_id, build_id=None, artifact=None):
     if artifact is not None and artifact not in ARTIFACTS:
         raise ApiError(404, "artifact_not_found", "Artifact is not available")
     root = snapshot_root(session).resolve()
+    if root.parent != session.root.resolve():
+        raise ApiError(422, "invalid_path", "Invalid snapshot root")
     target = root / ontology_id
     if build_id:
         target /= build_id
@@ -36,7 +38,7 @@ def checked_path(session, ontology_id, build_id=None, artifact=None):
     return target
 
 
-def load(session, ontology_id, build_id=None):
+def verify_snapshot(session, ontology_id, build_id=None):
     if build_id is None:
         current = checked_path(session, ontology_id) / "CURRENT"
         if not current.is_file() or not current.resolve().is_relative_to(snapshot_root(session).resolve()):
@@ -54,9 +56,19 @@ def load(session, ontology_id, build_id=None):
             expected = manifest["files"][name]
             if persistence._sha256(checked_path(session, ontology_id, build_id, name)) != expected:
                 raise ValueError("Artifact checksum mismatch")
-        return persistence.load_graph(ontology_id, build_id, root=snapshot_root(session))
-    except (ValueError, KeyError, OSError):
+        if manifest["ontology_id"] != ontology_id or manifest["build_id"] != build_id:
+            raise ValueError("Snapshot identity mismatch")
+        return manifest
+    except (ValueError, KeyError, OSError, TypeError):
         raise ApiError(409, "snapshot_integrity", "Snapshot integrity verification failed") from None
+
+
+def load(session, ontology_id, build_id=None):
+    manifest = verify_snapshot(session, ontology_id, build_id)
+    try:
+        return persistence.load_graph(ontology_id, manifest["build_id"], root=snapshot_root(session))
+    except (ValueError, KeyError, OSError, TypeError):
+        raise ApiError(409, "snapshot_integrity", "Snapshot graph could not be read") from None
 
 
 def select_graph(session, ontology_id=None, build_id=None):
@@ -70,7 +82,7 @@ def select_graph(session, ontology_id=None, build_id=None):
 
 def hidden_properties(session):
     hidden = {"password", "token", "secret", "api_key"}
-    onto = session.ctx.approved_ontology or session.ctx.manual_ontology
+    onto = session.ctx.build_ontology or session.ctx.manual_ontology
     if onto:
         hidden |= {a.name for cls in onto.classes for a in cls.attributes if a.pii}
         if session.ctx.scope:

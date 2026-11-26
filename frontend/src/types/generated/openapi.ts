@@ -102,6 +102,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Durable Workspaces */
+        get: operations["durable_workspaces_api_v1_workspaces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{session_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen Workspace */
+        post: operations["reopen_workspace_api_v1_workspaces__session_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Workspace */
+        delete: operations["delete_workspace_api_v1_workspaces__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}": {
         parameters: {
             query?: never;
@@ -206,6 +257,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/sources/connections/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Candidate */
+        post: operations["upload_candidate_api_v1_sessions__session_id__sources_connections_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/sources": {
         parameters: {
             query?: never;
@@ -215,6 +283,24 @@ export interface paths {
         };
         /** Status */
         get: operations["status_api_v1_sessions__session_id__sources_get"];
+        put?: never;
+        post?: never;
+        /** Disconnect */
+        delete: operations["disconnect_api_v1_sessions__session_id__sources_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Confirmed Schema */
+        get: operations["confirmed_schema_api_v1_sessions__session_id__sources_schema_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -232,6 +318,159 @@ export interface paths {
         };
         /** Health */
         get: operations["health_api_v1_sessions__session_id__sources_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Connection */
+        post: operations["test_connection_api_v1_sessions__session_id__sources_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Locations */
+        post: operations["locations_api_v1_sessions__session_id__sources_locations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect */
+        post: operations["connect_api_v1_sessions__session_id__sources_connections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/connections/candidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pending Connection */
+        get: operations["pending_connection_api_v1_sessions__session_id__sources_connections_candidate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Assets */
+        get: operations["assets_api_v1_sessions__session_id__sources_connections__connection_id__assets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_v1_sessions__session_id__sources_connections__connection_id__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select */
+        post: operations["select_api_v1_sessions__session_id__sources_connections__connection_id__select_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/sources/connections/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel Candidate */
+        delete: operations["cancel_candidate_api_v1_sessions__session_id__sources_connections__connection_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/source-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Types */
+        get: operations["types_api_v1_source_types_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -687,6 +926,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/builds/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pipeline */
+        get: operations["pipeline_api_v1_sessions__session_id__builds_pipeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/builds": {
         parameters: {
             query?: never;
@@ -784,6 +1040,91 @@ export interface paths {
         get: operations["cleaning_api_v1_sessions__session_id__builds_cleaning__kind__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entity Search */
+        get: operations["entity_search_api_v1_sessions__session_id__graphs_entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/entity-neighborhood": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entity Neighborhood */
+        get: operations["entity_neighborhood_api_v1_sessions__session_id__graphs_entity_neighborhood_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/questions/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Question Suggestions */
+        get: operations["question_suggestions_api_v1_sessions__session_id__graphs_questions_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/questions/provider": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Question Provider */
+        get: operations["question_provider_api_v1_sessions__session_id__graphs_questions_provider_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/graphs/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Graph */
+        post: operations["ask_graph_api_v1_sessions__session_id__graphs_questions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -987,6 +1328,40 @@ export interface paths {
         };
         /** Metrics */
         get: operations["metrics_api_v1_sessions__session_id__graphs_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph-projects/{project}/versions/{version}/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entity Search */
+        get: operations["entity_search_api_v1_graph_projects__project__versions__version__entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph-projects/{project}/versions/{version}/entity-neighborhood": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entity Neighborhood */
+        get: operations["entity_neighborhood_api_v1_graph_projects__project__versions__version__entity_neighborhood_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1356,6 +1731,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Insights */
+        get: operations["insights_api_v1_sessions__session_id__insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/domains": {
         parameters: {
             query?: never;
@@ -1578,6 +1970,21 @@ export interface components {
             /** Reviewer */
             reviewer: string;
         };
+        /** AssetView */
+        AssetView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Columns */
+            columns: number;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /** Relationship Origin */
+            relationship_origin: string;
+        };
         /** AttributeDef */
         AttributeDef: {
             /** Name */
@@ -1711,11 +2118,74 @@ export interface components {
              * @default true
              */
             nullable: boolean;
+            /** Original Type */
+            original_type?: string | null;
             /**
              * Source Header
              * @default
              */
             source_header: string;
+        };
+        /** ConnectionRequest */
+        ConnectionRequest: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "sample" | "csv" | "postgres" | "mssql" | "oracle" | "s3" | "azure_blob" | "azure_adls" | "gcs" | "bigquery";
+            /** Name */
+            name: string;
+            /** Configuration */
+            configuration?: {
+                [key: string]: string;
+            };
+        };
+        /** ConnectionView */
+        ConnectionView: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "sample" | "csv" | "postgres" | "mssql" | "oracle" | "s3" | "azure_blob" | "azure_adls" | "gcs" | "bigquery";
+            /** Name */
+            name: string;
+            /** Connected At */
+            connected_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Database */
+            database?: string | null;
+            /** Endpoint */
+            endpoint?: string | null;
+            /** Authentication */
+            authentication?: string | null;
+            /** Read Only */
+            read_only?: boolean | null;
+            /**
+             * Asset Count
+             * @default 0
+             */
+            asset_count: number;
+        };
+        /** ConnectorSpec */
+        ConnectorSpec: {
+            /** Required */
+            required: string[];
+            /** Optional */
+            optional?: string[];
+            /** Authentication */
+            authentication: {
+                [key: string]: string[];
+            };
+            /** Location */
+            location?: string | null;
+            /** Formats */
+            formats?: string[];
         };
         /** CypherRequest */
         CypherRequest: {
@@ -1760,6 +2230,8 @@ export interface components {
             users?: string[];
             /** Later List */
             later_list?: string[];
+            /** Domain Id */
+            domain_id?: string | null;
             /** Name */
             name: string;
         };
@@ -1800,6 +2272,34 @@ export interface components {
             /** Ref Columns */
             ref_columns: string[];
         };
+        /** GraphAnswer */
+        GraphAnswer: {
+            plan: components["schemas"]["GraphQueryPlan"];
+            /** Count */
+            count: number;
+            /** Explanation */
+            explanation: string;
+            /**
+             * Explanation Source
+             * @enum {string}
+             */
+            explanation_source: "ai_evidence_selection" | "calculated";
+            graph: components["schemas"]["GraphView"];
+            /** Rows */
+            rows: {
+                [key: string]: unknown;
+            }[];
+            /** Followups */
+            followups: string[];
+            /**
+             * Provider
+             * @default groq
+             * @enum {string}
+             */
+            provider: "groq" | "ollama" | "rules";
+            /** Notice */
+            notice?: string | null;
+        };
         /** GraphEdge */
         GraphEdge: {
             /** Source */
@@ -1822,10 +2322,43 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** GraphQueryPlan */
+        GraphQueryPlan: {
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "entities" | "relationships" | "count_entities" | "count_relationships" | "path" | "insights" | "clarify";
+            /** Label */
+            label?: string | null;
+            /** Relationship */
+            relationship?: string | null;
+            /** Target Label */
+            target_label?: string | null;
+            /** Property */
+            property?: string | null;
+            /** Contains */
+            contains?: string | null;
+            /** Source Id */
+            source_id?: string | null;
+            /** Target Id */
+            target_id?: string | null;
+        };
         /** GraphQuestion */
         GraphQuestion: {
             /** Question */
             question: string;
+        };
+        /** GraphQuestionRequest */
+        GraphQuestionRequest: {
+            /** Question */
+            question: string;
+            /** Previous Question */
+            previous_question?: string | null;
+            /** Ontology Id */
+            ontology_id?: string | null;
+            /** Build Id */
+            build_id?: string | null;
         };
         /** GraphView */
         GraphView: {
@@ -1844,6 +2377,120 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** InsightsBucket */
+        InsightsBucket: {
+            /** Label */
+            label: string;
+            /** Records */
+            records: number;
+            /** Total */
+            total?: number | null;
+        };
+        /** InsightsField */
+        InsightsField: {
+            /** Name */
+            name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "measure" | "date" | "category";
+            /** Semantic */
+            semantic: string;
+        };
+        /** InsightsFinding */
+        InsightsFinding: {
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Metric */
+            metric: string;
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "distribution" | "trends" | "quality" | "network";
+        };
+        /** InsightsGraph */
+        InsightsGraph: {
+            /** Metrics */
+            metrics: components["schemas"]["InsightsMetric"][];
+            /** Entity Types */
+            entity_types: string[];
+            /** Entities */
+            entities: components["schemas"]["InsightsBucket"][];
+            /** Relationships */
+            relationships: components["schemas"]["InsightsBucket"][];
+            /** Communities */
+            communities: components["schemas"]["InsightsBucket"][];
+            topology: components["schemas"]["GraphView"];
+            /** Dependencies */
+            dependencies: components["schemas"]["InsightsBucket"][];
+            /** Most Connected */
+            most_connected: components["schemas"]["InsightsBucket"][];
+        };
+        /** InsightsMetric */
+        InsightsMetric: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number | null;
+            /** Definition */
+            definition: string;
+            /** Unit */
+            unit?: string | null;
+        };
+        /** InsightsQuality */
+        InsightsQuality: {
+            /** Dataset */
+            dataset: string;
+            /** Issue */
+            issue: string;
+            /** Count */
+            count: number;
+            /** Severity */
+            severity: string;
+        };
+        /** InsightsResponse */
+        InsightsResponse: {
+            /**
+             * Refreshed At
+             * Format: date-time
+             */
+            refreshed_at: string;
+            /** Source */
+            source: string | null;
+            /** Tables */
+            tables: string[];
+            /** Table */
+            table: string | null;
+            /** Fields */
+            fields: components["schemas"]["InsightsField"][];
+            /** Scanned */
+            scanned: number;
+            /** Row Limit */
+            row_limit: number;
+            /** Truncated */
+            truncated: boolean;
+            /** Dimension */
+            dimension: string | null;
+            /** Measure */
+            measure: string | null;
+            /** Date Field */
+            date_field: string | null;
+            /** Metrics */
+            metrics: components["schemas"]["InsightsMetric"][];
+            /** Distribution */
+            distribution: components["schemas"]["InsightsBucket"][];
+            /** Trends */
+            trends: components["schemas"]["InsightsBucket"][];
+            /** Quality */
+            quality: components["schemas"]["InsightsQuality"][];
+            graph: components["schemas"]["InsightsGraph"] | null;
+            /** Findings */
+            findings: components["schemas"]["InsightsFinding"][];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1928,6 +2575,17 @@ export interface components {
          * @enum {string}
          */
         Origin: "manual" | "ai" | "hybrid";
+        /** Page[AssetView] */
+        Page_AssetView_: {
+            /** Items */
+            items: components["schemas"]["AssetView"][];
+            /** Total */
+            total: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+        };
         /** Page[dict] */
         Page_dict_: {
             /** Items */
@@ -1967,6 +2625,27 @@ export interface components {
             sslmode: "disable" | "allow" | "prefer" | "require" | "verify-ca" | "verify-full";
             /** Schemas */
             schemas?: string[];
+        };
+        /** PreviewRequest */
+        PreviewRequest: {
+            /** Asset */
+            asset: string;
+            /** Columns */
+            columns?: string[] | null;
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+        };
+        /** PreviewView */
+        PreviewView: {
+            /** Columns */
+            columns: components["schemas"]["ColumnInfo"][];
+            /** Rows */
+            rows: {
+                [key: string]: unknown;
+            }[];
         };
         /** RelationshipDef */
         RelationshipDef: {
@@ -2048,17 +2727,37 @@ export interface components {
         Result_AuthUserView_: {
             data: components["schemas"]["AuthUserView"];
         };
+        /** Result[ConnectionView] */
+        Result_ConnectionView_: {
+            data: components["schemas"]["ConnectionView"];
+        };
+        /** Result[GraphAnswer] */
+        Result_GraphAnswer_: {
+            data: components["schemas"]["GraphAnswer"];
+        };
         /** Result[GraphView] */
         Result_GraphView_: {
             data: components["schemas"]["GraphView"];
+        };
+        /** Result[InsightsResponse] */
+        Result_InsightsResponse_: {
+            data: components["schemas"]["InsightsResponse"];
         };
         /** Result[Ontology] */
         Result_Ontology_: {
             data: components["schemas"]["Ontology"];
         };
+        /** Result[Page[AssetView]] */
+        Result_Page_AssetView__: {
+            data: components["schemas"]["Page_AssetView_"];
+        };
         /** Result[Page[dict]] */
         Result_Page_dict__: {
             data: components["schemas"]["Page_dict_"];
+        };
+        /** Result[PreviewView] */
+        Result_PreviewView_: {
+            data: components["schemas"]["PreviewView"];
         };
         /** Result[SavedDomain] */
         Result_SavedDomain_: {
@@ -2076,6 +2775,10 @@ export interface components {
         Result_StageAdvice_: {
             data: components["schemas"]["StageAdvice"];
         };
+        /** Result[Union[ConnectionView, NoneType]] */
+        Result_Union_ConnectionView__NoneType__: {
+            data: components["schemas"]["ConnectionView"] | null;
+        };
         /** Result[Union[dict, NoneType]] */
         Result_Union_dict__NoneType__: {
             /** Data */
@@ -2088,6 +2791,20 @@ export interface components {
             /** Data */
             data: {
                 [key: string]: unknown;
+            };
+        };
+        /** Result[dict[Literal['sample', 'csv', 'postgres', 'mssql', 'oracle', 's3', 'azure_blob', 'azure_adls', 'gcs', 'bigquery'], ConnectorSpec]] */
+        Result_dict_Literal__sample____csv____postgres____mssql____oracle____s3____azure_blob____azure_adls____gcs____bigquery____ConnectorSpec__: {
+            /** Data */
+            data: {
+                [key: string]: components["schemas"]["ConnectorSpec"];
+            };
+        };
+        /** Result[dict[str, list[str]]] */
+        Result_dict_str__list_str___: {
+            /** Data */
+            data: {
+                [key: string]: string[];
             };
         };
         /** Result[list[ReviewItem]] */
@@ -2116,6 +2833,11 @@ export interface components {
             data: {
                 [key: string]: unknown;
             }[];
+        };
+        /** Result[list[str]] */
+        Result_list_str__: {
+            /** Data */
+            data: string[];
         };
         /** ReviewItem */
         ReviewItem: {
@@ -2172,6 +2894,11 @@ export interface components {
             /** Values */
             values?: string[] | null;
         };
+        /** SaveDraftRequest */
+        SaveDraftRequest: {
+            /** Name */
+            name: string;
+        };
         /** SavedDomain */
         SavedDomain: {
             /** Project */
@@ -2193,6 +2920,8 @@ export interface components {
             users?: string[];
             /** Later List */
             later_list?: string[];
+            /** Domain Id */
+            domain_id?: string | null;
             /** Name */
             name: string;
             /**
@@ -2239,6 +2968,10 @@ export interface components {
              * @default
              */
             source_name: string;
+            /** Source Type */
+            source_type?: string | null;
+            /** Connection Id */
+            connection_id?: string | null;
             /**
              * Extracted At
              * @default
@@ -2266,6 +2999,13 @@ export interface components {
             users?: string[];
             /** Later List */
             later_list?: string[];
+            /** Domain Id */
+            domain_id?: string | null;
+        };
+        /** SelectionRequest */
+        SelectionRequest: {
+            /** Assets */
+            assets: string[];
         };
         /** SessionCreate */
         SessionCreate: {
@@ -2292,6 +3032,33 @@ export interface components {
             /** Expires In Seconds */
             expires_in_seconds: number;
             summary?: components["schemas"]["WorkspaceSummary"];
+            /** Updated At */
+            updated_at?: string | null;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+            /** Domain Id */
+            domain_id?: string | null;
+            /**
+             * Reconnect Required
+             * @default false
+             */
+            reconnect_required: boolean;
+            /** Historical Stages */
+            historical_stages?: number[];
+            /** Recovery Issues */
+            recovery_issues?: string[];
+            /** Snapshot */
+            snapshot?: {
+                [key: string]: string;
+            } | null;
+            /** Published Build */
+            published_build?: {
+                [key: string]: string;
+            } | null;
+            build_configuration?: components["schemas"]["BuildRequest"] | null;
         };
         /** SnapshotRequest */
         SnapshotRequest: {
@@ -2348,6 +3115,20 @@ export interface components {
              * @default []
              */
             unique_constraints: string[][];
+            /** Source Path */
+            source_path?: string | null;
+            /**
+             * Asset Kind
+             * @default table
+             */
+            asset_kind: string;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /**
+             * Relationship Origin
+             * @default declared
+             */
+            relationship_origin: string;
             /** Row Estimate */
             row_estimate?: number | null;
         };
@@ -2633,6 +3414,86 @@ export interface operations {
             };
         };
     };
+    durable_workspaces_api_v1_workspaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_list_SessionView__"];
+                };
+            };
+        };
+    };
+    reopen_workspace_api_v1_workspaces__session_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_SessionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_workspace_api_v1_workspaces__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_api_v1_sessions__session_id__get: {
         parameters: {
             query?: never;
@@ -2901,6 +3762,43 @@ export interface operations {
             };
         };
     };
+    upload_candidate_api_v1_sessions__session_id__sources_connections_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    files: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_ConnectionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     status_api_v1_sessions__session_id__sources_get: {
         parameters: {
             query?: never;
@@ -2919,6 +3817,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_api_v1_sessions__session_id__sources_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirmed_schema_api_v1_sessions__session_id__sources_schema_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_str__list_str___"];
                 };
             };
             /** @description Validation Error */
@@ -2959,6 +3917,300 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_connection_api_v1_sessions__session_id__sources_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_ConnectionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    locations_api_v1_sessions__session_id__sources_locations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_list_str__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_api_v1_sessions__session_id__sources_connections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_ConnectionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pending_connection_api_v1_sessions__session_id__sources_connections_candidate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_Union_ConnectionView__NoneType__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assets_api_v1_sessions__session_id__sources_connections__connection_id__assets_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                search?: string;
+            };
+            header?: never;
+            path: {
+                connection_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_Page_AssetView__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_sessions__session_id__sources_connections__connection_id__preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_PreviewView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_api_v1_sessions__session_id__sources_connections__connection_id__select_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_ConnectionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_candidate_api_v1_sessions__session_id__sources_connections__connection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    types_api_v1_source_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_Literal__sample____csv____postgres____mssql____oracle____s3____azure_blob____azure_adls____gcs____bigquery____ConnectorSpec__"];
                 };
             };
         };
@@ -3329,7 +4581,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveDraftRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -3995,6 +5251,37 @@ export interface operations {
             };
         };
     };
+    pipeline_api_v1_sessions__session_id__builds_pipeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     start_api_v1_sessions__session_id__builds_post: {
         parameters: {
             query?: never;
@@ -4218,6 +5505,179 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Result_Page_dict__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entity_search_api_v1_sessions__session_id__graphs_entities_get: {
+        parameters: {
+            query?: {
+                ontology_id?: string | null;
+                build_id?: string | null;
+                q?: string;
+                label?: string;
+                prefix?: boolean;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entity_neighborhood_api_v1_sessions__session_id__graphs_entity_neighborhood_get: {
+        parameters: {
+            query: {
+                node_id: string;
+                ontology_id?: string | null;
+                build_id?: string | null;
+                hops?: number;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    question_suggestions_api_v1_sessions__session_id__graphs_questions_suggestions_get: {
+        parameters: {
+            query?: {
+                ontology_id?: string | null;
+                build_id?: string | null;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_list_str__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    question_provider_api_v1_sessions__session_id__graphs_questions_provider_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_graph_api_v1_sessions__session_id__graphs_questions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphQuestionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_GraphAnswer_"];
                 };
             };
             /** @description Validation Error */
@@ -4674,6 +6134,77 @@ export interface operations {
             header?: never;
             path: {
                 session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entity_search_api_v1_graph_projects__project__versions__version__entities_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                label?: string;
+                prefix?: boolean;
+            };
+            header?: never;
+            path: {
+                project: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entity_neighborhood_api_v1_graph_projects__project__versions__version__entity_neighborhood_get: {
+        parameters: {
+            query: {
+                node_id: string;
+                hops?: number;
+            };
+            header?: never;
+            path: {
+                project: string;
+                version: string;
             };
             cookie?: never;
         };
@@ -5531,6 +7062,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Result_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    insights_api_v1_sessions__session_id__insights_get: {
+        parameters: {
+            query?: {
+                table?: string | null;
+                dimension?: string | null;
+                category?: string | null;
+                measure?: string | null;
+                date_field?: string | null;
+                start?: string | null;
+                end?: string | null;
+                minimum?: number | null;
+                maximum?: number | null;
+                interval?: "day" | "week" | "month" | "quarter" | "year";
+                entity_type?: string | null;
+                ontology_id?: string | null;
+                build_id?: string | null;
+                refresh?: boolean;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Result_InsightsResponse_"];
                 };
             };
             /** @description Validation Error */

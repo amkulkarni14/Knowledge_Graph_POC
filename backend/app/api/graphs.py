@@ -5,14 +5,89 @@ import networkx as nx
 from kg_pipeline.graph_builder.loaders import s16_graph_persistence as persistence
 from backend.app.core.dependencies import CurrentSession, CurrentUser
 from backend.app.dto.models import Result, GraphView, Page, SnapshotRequest, Identifier, BuildId
+from backend.app.dto.graph_questions import GraphAnswer, GraphQuestionRequest
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services import graphs as service
+from backend.app.services import entity_explorer as entities
+from backend.app.services import graph_questions as questions
 from backend.app.services.graph_intelligence import structural_insights
 from backend.app.services.graph_exports import graphml_response
 from backend.app.services.graphml_import import MAX_GRAPHML_BYTES, read_graphml, summarize
-from backend.app.services.workflow import execute, operation, require
+from backend.app.services.workflow import current_build_ontology, execute, operation, require
 
 router = APIRouter(prefix="/sessions/{session_id}/graphs", tags=["graphs"])
+
+
+@router.get("/entities", response_model=Result[dict])
+def entity_search(session: CurrentSession, ontology_id: Identifier | None = None, build_id: BuildId | None = None,
+                  q: str = Query("", max_length=300), label: str = Query("", max_length=63), prefix: bool = False):
+    with operation(session):
+        graph = service.select_graph(session, ontology_id, build_id)
+        metadata = graph.graph.get("entity_ontology", {})
+        return {"data": entities.local_search(graph, entities.property_filter(session, metadata),
+                                              q.strip(), label, prefix, metadata)}
+
+
+@router.get("/entity-neighborhood", response_model=Result[dict])
+def entity_neighborhood(session: CurrentSession, node_id: str = Query(min_length=1, max_length=300),
+                        ontology_id: Identifier | None = None, build_id: BuildId | None = None,
+                        hops: int = Query(1, ge=0, le=3)):
+    with operation(session):
+        graph = service.select_graph(session, ontology_id, build_id)
+        metadata = graph.graph.get("entity_ontology", {})
+        clean = entities.property_filter(session, metadata)
+        root = entities.local_node(graph, clean, node_id)
+        return {"data": entities.neighborhood(
+            root, hops, lambda batch, expanded, limit: entities.local_edges(graph, clean, batch, expanded, limit),
+            metadata, node_count=graph.number_of_nodes(),
+            edge_count=graph.number_of_edges())}
+
+
+@router.get("/questions/suggestions", response_model=Result[list[str]])
+def question_suggestions(session: CurrentSession, ontology_id: Identifier | None = None, build_id: BuildId | None = None):
+    with operation(session):
+        return {"data": questions.followups(questions.graph_schema(session, service.select_graph(session, ontology_id, build_id)))}
+
+
+@router.get("/questions/provider", response_model=Result[dict])
+def question_provider(session: CurrentSession):
+    return {"data": questions.availability()}
+
+
+@router.post("/questions", response_model=Result[GraphAnswer])
+def ask_graph(body: GraphQuestionRequest, session: CurrentSession):
+    if not questions.SLOTS.acquire(blocking=False):
+        raise ApiError(503, "graph_question_busy", "Graph AI is busy. Try again shortly.")
+    try:
+        with operation(session):
+            graph = service.select_graph(session, body.ontology_id, body.build_id)
+            schema = questions.graph_schema(session, graph, include_properties=body.ontology_id is None)
+        # Preserve the default Groq transport and scope Ollama to this feature.
+        name = questions.provider()
+        notice = None
+        complete = questions.ollama_provider.complete if name == "ollama" else questions.model_completion
+        def rule_plan():
+            return questions.plan_question(body, schema, lambda *_: questions.rules(body, schema))
+        if name == "rules":
+            plan = rule_plan()
+        else:
+            try:
+                plan = questions.plan_question(body, schema, complete)
+            except ApiError as error:
+                if name != "ollama" or error.status < 500:
+                    raise
+                name = "rules"
+                notice = error.message + " Using predefined graph questions."
+                plan = rule_plan()
+        with operation(session):
+            if body.ontology_id is None and session.ctx.graph is not graph:
+                raise ApiError(409, "graph_changed", "The workspace graph changed. Ask your question again.")
+            result = questions.execute(graph, plan, schema)
+        if name != "rules" and plan.operation not in {"path", "insights"}:
+            result = questions.explain(result, complete)
+        return {"data": {**result, "provider": name, "notice": notice}}
+    finally:
+        questions.SLOTS.release()
 
 
 def graphml_upload(file, label_key, relationship_key):
@@ -28,7 +103,7 @@ def preview_graphml(session: CurrentSession, file: UploadFile = File(),
                     relationship_key: str = Form("type", min_length=1, max_length=63)):
     payload, label_key, relationship_key = graphml_upload(file, label_key, relationship_key)
     with operation(session):
-        ontology = session.ctx.approved_ontology if session.ctx.is_done(9) else None
+        ontology = current_build_ontology(session)
         graph = read_graphml(payload, ontology, label_key, relationship_key)
         return {"data": {"project": session.name, "ontology_validated": ontology is not None,
                          **summarize(graph)}}
@@ -71,6 +146,8 @@ def save_snapshot(body: SnapshotRequest, session: CurrentSession, user: CurrentU
         if session.ctx.graph_report is None:
             raise ApiError(409, "no_graph_validation", "Validate the graph before saving")
         result = execute(session, 16, persistence.run)
+        session.recovered_snapshot = {"ontology_id": result["ontology_id"], "build_id": result["build_id"]}
+        session.saved_graph_report = session.ctx.graph_report
         return {"data": {k: v for k, v in result.items() if k != "path"}}
 
 
@@ -117,8 +194,12 @@ def nodes(session: CurrentSession, ontology_id: Identifier | None = None, build_
           offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
     with operation(session):
         graph = service.select_graph(session, ontology_id, build_id)
+        search_text = search.casefold()
+        searchable = {"name", "title", "display_name"} - service.hidden_properties(session)
         matched = (n for n, props in graph.nodes(data=True) if (not label or props.get("label") == label)
-                   and search.casefold() in str(n).casefold())
+                   and (search_text in str(n).casefold() or any(
+                       isinstance(props.get(key), str) and search_text in props[key].casefold()
+                       for key in searchable)))
         total, items = 0, []
         for node in matched:
             if offset <= total < offset + limit:

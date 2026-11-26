@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from kg_pipeline.core.entity_metadata import entity_metadata
 
 from backend.app.exceptions.handlers import ApiError
 
@@ -50,8 +51,11 @@ def register(db, session, actor, version, ctx, analytics, started_at):
         """, (session.id, actor, session.name))
     authorize(db, session.id, actor, lock=True)
     graph = ctx.graph
-    onto = ctx.approved_ontology
+    onto = ctx.build_ontology
     validation = {key: len(ctx.graph_report[key]) for key in ("errors", "warnings")}
+    validation["entity_ontology"] = graph.graph.get("entity_ontology") or entity_metadata(onto)
+    if ctx.ontology_validation_digest is not None:
+        validation.update(ontology_policy=session.workflow_policy, ontology_digest=ctx.ontology_validation_digest)
     source_id = (f"graphml:{graph.graph['import_digest']}" if graph.graph.get("import_origin") == "graphml"
                  else f"{session.id}:{session.source_version}")
     db.execute("""
@@ -89,7 +93,8 @@ def list_versions(db, project, actor, offset, limit):
     entry = authorize(db, project, actor)
     versions = db.execute("""
         SELECT build_id, ontology_id, ontology_version, status, mode, actor, source_id, source_watermarks,
-               node_count, edge_count, rejected_count, validation, started_at, finished_at, error_code
+               node_count, edge_count, rejected_count, validation - 'entity_ontology' AS validation,
+               started_at, finished_at, error_code
         FROM kg_meta.graph_build WHERE project_id = %s
         ORDER BY started_at DESC, build_id DESC OFFSET %s LIMIT %s
         """, (project, offset, limit)).fetchall()

@@ -35,7 +35,8 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await expect(
     page.getByRole("button", { name: "Continue to Goal & Scope" }),
   ).toBeDisabled();
-  await expect(page.getByRole("tab")).toHaveText(["CSV upload", "PostgreSQL"]);
+  await page.getByRole("combobox", { name: "Select data source" }).click();
+  await page.getByRole("option", { name: "Upload Files", exact: true }).click();
   await page
     .getByLabel("Choose source files")
     .setInputFiles(
@@ -50,6 +51,8 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
       ].map((file) => `../data/samples/customer360/${file}.csv`),
     );
   await page.getByRole("button", { name: "Analyze and connect files" }).click();
+  await page.getByRole("checkbox", { name: "Select all on this page" }).check();
+  await page.getByRole("button", { name: "Confirm selection" }).click();
   await expect(
     page.getByRole("link", { name: "Continue to Goal & Scope" }),
   ).toBeVisible();
@@ -64,16 +67,15 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await signIn(page);
-  await expect(page.getByText("6% complete", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Open workspace" }).click();
+  const workspaceRow = page.locator(".report-row").filter({ hasText: workspaceName });
+  await expect(workspaceRow.getByText("6% complete", { exact: true })).toBeVisible();
+  await workspaceRow.getByRole("button", { name: "Open workspace" }).click();
   await page.getByRole("link", { name: "Goal & Scope", exact: true }).click();
   await page.getByRole("combobox", { name: "Saved domain" }).click();
   await page.getByRole("option", { name: domainName }).click();
   await page.getByRole("button", { name: "Use domain" }).click();
   await expect(page.getByLabel("Project name")).toHaveValue("Customer 360");
-  await expect(
-    page.getByLabel("Columns in scope", { exact: true }),
-  ).toHaveValue("csv.customers.cust_id");
+  await expect(page.getByText("csv.customers.cust_id", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Save scope" }).click();
   await expect(page.getByText("Scope saved.")).toBeVisible();
   await page
@@ -123,8 +125,10 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
     .click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await page.getByRole("link", { name: "Build Plan", exact: true }).click();
-  await page.getByRole("button", { name: "Run full build" }).click();
+  await page
+    .getByRole("link", { name: "Graph Build Manager", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Build Knowledge Graph", exact: true }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Go to Storage & Snapshots" }),
@@ -173,10 +177,35 @@ test("CSV workflow through explicit review, approval, build, snapshots, and expl
   await expect(
     page.getByRole("link", { name: "Knowledge Graph", exact: true }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "Business Insights", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Connected groups" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Knowledge graph with/ })).toBeVisible();
+  const snapshotSelector = page.getByRole("combobox", { name: "Graph or snapshot" });
+  await snapshotSelector.click();
+  await page.getByRole("option", { name: /^\d{8}T/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Relationship and dependency insights" })).toBeVisible();
   await page.getByRole("link", { name: "Graph Explorer", exact: true }).click();
   await expect(
     page.getByRole("img", { name: /Knowledge graph with/ }),
   ).toBeVisible();
+  await page.getByText("Ask Your Knowledge Graph", { exact: true }).click();
+  await expect(page.getByLabel("Ask a business question")).toBeVisible();
+  await page.route("**/graphs/questions", (route) => route.fulfill({
+    json: { data: {
+      plan: { operation: "count_entities", label: "Account" },
+      count: 1, explanation: "1 matching entity.", explanation_source: "calculated",
+      graph: { nodes: [{ id: "Account:1", properties: { label: "Account" } }],
+        edges: [], total_nodes: 20, total_edges: 25, truncated: true },
+      rows: [{ entity: "Account:1", label: "Account" }], followups: [],
+    } },
+  }), { times: 1 });
+  await page.getByLabel("Ask a business question").fill("How many accounts?");
+  await page.getByRole("button", { name: "Ask graph", exact: true }).click();
+  await expect(page.getByText("1 matching entity.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Show evidence in graph" }).click();
+  await expect(page.getByRole("img", { name: /Knowledge graph with 1 visible nodes/ })).toBeVisible();
+  await page.getByRole("button", { name: "Clear query evidence" }).click();
+  await page.getByText("Ask Your Knowledge Graph", { exact: true }).click();
   await page
     .getByRole("combobox", { name: "Graph source", exact: true })
     .click();

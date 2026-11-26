@@ -1,8 +1,9 @@
+import { labels, type ConnectorId } from "../sources/guidedSources";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, LinearProgress, TextField } from "@mui/material";
-import { ArrowRight, ChartNoAxesCombined, Check, Workflow } from "lucide-react";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, LinearProgress, TextField } from "@mui/material";
+import { ArrowRight, ChartNoAxesCombined, Check, Trash2, Workflow } from "lucide-react";
 import { ApiError, get } from "../../api/client";
 import { useSavedOntologies } from "../../api/libraryApi";
 import { sessionsApi } from "../../api/sessionsApi";
@@ -15,12 +16,10 @@ import {
   StatusChip,
 } from "../../shared/ui/WorkspaceUi";
 import {
-  stageGroups,
-  stageOrder,
-  stagePosition,
   stageRoutes,
 } from "../../constants/stages.constants";
 import { stageNavigation } from "../../constants/stageNavigation";
+import type { Schema } from "../../types/common.types";
 
 type PublishedProject = {
   project_id: string;
@@ -31,7 +30,7 @@ type PublishedProject = {
 };
 
 const descriptions: Record<number, string> = {
-  2: "Upload CSV files or connect to PostgreSQL.",
+  2: "Connect and select data assets for this workspace.",
   1: "Define business questions and the data in scope.",
   3: "Extract tables, columns, keys, and relationships.",
   4: "Classify tables and identify candidate relationships.",
@@ -41,7 +40,7 @@ const descriptions: Record<number, string> = {
   8: "Check ontology structure and source mappings.",
   9: "Approve and manage ontology versions.",
   10: "Plan how source records become graph entities.",
-  11: "Read the records required by the build plan.",
+  11: "Read the source records selected for graph construction.",
   12: "Check records against quality rules.",
   13: "Standardize records and resolve duplicates.",
   14: "Build graph nodes and edges.",
@@ -51,10 +50,13 @@ const descriptions: Record<number, string> = {
 
 export default function OverviewPage() {
   const [name, setName] = useState("Knowledge workspace");
+  const [deleteTarget, setDeleteTarget] = useState<Schema<"SessionView"> | null>(null);
+  const [confirmation, setConfirmation] = useState("");
+  const [deletedName, setDeletedName] = useState("");
   const navigate = useNavigate();
   const client = useQueryClient();
   const savedOntologies = useSavedOntologies();
-  const { id, session, done, can } = useWorkspace();
+  const { id, session, done, can, workflow } = useWorkspace();
   const notice = useSessionStore((s) => s.notice);
   const health = useQuery({
     queryKey: ["health"],
@@ -70,7 +72,7 @@ export default function OverviewPage() {
   });
   const workspaces = useQuery({
     queryKey: ["workspaces"],
-    queryFn: ({ signal }) => sessionsApi.list(signal),
+    queryFn: ({ signal }) => sessionsApi.workspaces(signal),
     refetchInterval: 10000,
     retry: false,
   });
@@ -98,9 +100,10 @@ export default function OverviewPage() {
   );
   const runningStage =
     running && typeof job?.stage === "number" ? job.stage : undefined;
+  const { order: stageOrder, groups: stageGroups } = workflow;
   const next = stageOrder.find((stage) => !done.includes(stage) && can(stage));
   const completed = stageOrder.filter((stage) => done.includes(stage)).length;
-  const percent = Math.round((completed / stageOrder.length) * 100);
+  const percent = stageOrder.length ? Math.round((completed / stageOrder.length) * 100) : 0;
   const hasGraph = done.includes(14);
   const otherWorkspaces =
     workspaces.data?.filter((workspace) => workspace.id !== id) ?? [];
@@ -109,15 +112,50 @@ export default function OverviewPage() {
     otherWorkspaces.filter((workspace) =>
       workspace.completed_stages.includes(14),
     ).length;
+  const reopen = useMutation({
+    mutationFn: ({ workspaceId }: { workspaceId: string; resume?: boolean }) => sessionsApi.reopen(workspaceId),
+    onSuccess: (workspace, { resume }) => {
+      useGraphStore.getState().reset();
+      client.setQueryData(["workspace", workspace.id, "session"], workspace);
+      useSessionStore.getState().setSession(workspace.id);
+      void client.invalidateQueries({ queryKey: ["workspaces"] });
+      if (resume) {
+        const nextStage = stageOrder.find((stage) => !workspace.completed_stages.includes(stage));
+        navigate(workspace.reconnect_required ? "/sources"
+          : workspace.snapshot && !workspace.completed_stages.includes(14) ? "/explorer?recovered=1"
+          : nextStage ? stageRoutes[nextStage] : "/explorer");
+      }
+    },
+  });
+  const deletion = useMutation({
+    mutationFn: (workspace: Schema<"SessionView">) => sessionsApi.deleteWorkspace(workspace.id),
+    onSuccess: (_, workspace) => {
+      if (useSessionStore.getState().id === workspace.id) {
+        useSessionStore.getState().setSession(null);
+        useGraphStore.getState().reset();
+      }
+      client.removeQueries({ queryKey: ["workspace", workspace.id] });
+      client.setQueryData<Schema<"SessionView">[]>(["workspaces"], (current) =>
+        current?.filter((item) => item.id !== workspace.id));
+      setDeleteTarget(null);
+      setDeletedName(workspace.name);
+      void client.invalidateQueries({ queryKey: ["workspaces"] });
+      void client.invalidateQueries({ queryKey: ["saved-ontologies"] });
+    },
+  });
   function openWorkspace(workspaceId: string) {
-    useGraphStore.getState().reset();
-    useSessionStore.getState().setSession(workspaceId);
+    if (!reopen.isPending) reopen.mutate({ workspaceId });
+  }
+  function lastStage(workspace: Schema<"SessionView">) {
+    const evidence = [...workspace.completed_stages, ...(workspace.historical_stages ?? [])];
+    const stage = stageOrder.filter((number) => evidence.includes(number)).at(-1);
+    return stage ? stageNavigation[stage].title : "None";
   }
   const sourceType =
     summary?.source_type === "csv"
       ? "CSV"
-      : summary?.source_type === "postgres"
-        ? "PostgreSQL"
+      : summary?.source_type && Object.hasOwn(labels, summary.source_type)
+        ? labels[summary.source_type as ConnectorId]
         : undefined;
   const publishedOntologies = published.filter(
     (project) => project.ontology_id,
@@ -242,12 +280,18 @@ export default function OverviewPage() {
         </Panel>
       </div>
 
-      {otherWorkspaces.length > 0 && (
+      {deletedName && <Alert severity="success" onClose={() => setDeletedName("")}>
+        Workspace “{deletedName}” deleted.
+      </Alert>}
+      {!!workspaces.data?.length && (
         <div className="mb-5">
-          <Panel title={id ? "Other active workspaces" : "Active workspaces"}>
-            {otherWorkspaces.map((workspace) => {
+          <Panel title="Workspaces">
+            {workspaces.data.map((workspace) => {
+              const progress = workspace.active
+                ? workspace.completed_stages
+                : (workspace.historical_stages ?? []);
               const count = stageOrder.filter((stage) =>
-                workspace.completed_stages.includes(stage),
+                progress.includes(stage),
               ).length;
               const status =
                 typeof workspace.job?.status === "string"
@@ -258,13 +302,34 @@ export default function OverviewPage() {
                   <div>
                     <strong>{workspace.name}</strong>
                     <p className="muted">
-                      {Math.round((count / stageOrder.length) * 100)}% complete
+                      {stageOrder.length ? Math.round((count / stageOrder.length) * 100) : 0}% complete
                       {status && ` · Build ${status}`}
                     </p>
                   </div>
-                  <Button onClick={() => openWorkspace(workspace.id)}>
-                    Open workspace
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button disabled={reopen.isPending} onClick={() => openWorkspace(workspace.id)}>
+                      Open workspace
+                    </Button>
+                    <Button disabled={reopen.isPending} onClick={() =>
+                      reopen.mutate({ workspaceId: workspace.id, resume: true })}>
+                      {workspace.reconnect_required ? "Reconnect source" : "Resume workflow"}
+                    </Button>
+                    <Button color="error" startIcon={<Trash2 size={16} />}
+                      aria-label={`Delete workspace ${workspace.name}`}
+                      disabled={deletion.isPending}
+                      onClick={() => {
+                        deletion.reset();
+                        setConfirmation("");
+                        setDeleteTarget(workspace);
+                      }}>
+                      Delete
+                    </Button>
+                  </div>
+                  <div className="muted text-sm">
+                    <p>Last updated {workspace.updated_at ? new Date(workspace.updated_at).toLocaleString() : "Unavailable"}</p>
+                    <p>Last completed stage {lastStage(workspace)}</p>
+                    <p>{workspace.active ? "Active" : "Available to reopen"}{workspace.reconnect_required ? " · Source reconnection required" : ""}</p>
+                  </div>
                 </div>
               );
             })}
@@ -272,6 +337,40 @@ export default function OverviewPage() {
         </div>
       )}
       <Feedback error={workspaces.error} />
+      <Feedback error={reopen.error} />
+      <Dialog open={!!deleteTarget} aria-labelledby="delete-workspace-title"
+        onClose={() => { if (!deletion.isPending) setDeleteTarget(null); }}>
+        <DialogTitle id="delete-workspace-title">Delete Workspace</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Deleting “{deleteTarget?.name}” removes it from the workspace list and clears its recovery checkpoint.
+            Local drafts, snapshots, and artifacts are retained. Published Neo4j graphs and versions remain available.
+          </DialogContentText>
+          <TextField autoFocus fullWidth margin="normal" label="Type the exact workspace name"
+            value={confirmation} disabled={deletion.isPending}
+            onChange={(event) => setConfirmation(event.target.value)} />
+          <Feedback error={deletion.error} />
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={deletion.isPending} onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button color="error" variant="contained"
+            disabled={!deleteTarget || confirmation !== deleteTarget.name || deletion.isPending}
+            onClick={() => { if (deleteTarget && confirmation === deleteTarget.name) deletion.mutate(deleteTarget); }}>
+            Delete Workspace
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {session.data?.recovery_issues?.map((issue) => <Alert key={issue} severity="warning">{issue}</Alert>)}
+      {session.data?.job?.status === "interrupted" && <Alert severity="warning">
+        The previous job was interrupted. Review the saved state before retrying.
+      </Alert>}
+      {session.data?.reconnect_required && <Alert severity="info"
+        action={<Button component={Link} to="/sources">Reconnect source</Button>}>
+        Reconnect the source to rebuild. Saved snapshots remain available for inspection.
+      </Alert>}
+      {session.data?.snapshot && !done.includes(14) && (
+        <Button component={Link} to="/explorer?recovered=1">Open saved graph</Button>
+      )}
 
       {!id && (
         <div className="mb-5">
@@ -334,7 +433,7 @@ export default function OverviewPage() {
                         {complete ? <Check size={14} /> : <Icon size={14} />}
                       </span>
                       <span className="stage-label">
-                        {stagePosition(stage)}. {title}
+                        {stageOrder.indexOf(stage) + 1}. {title}
                         <small className="muted block mt-1">
                           {descriptions[stage]}
                         </small>
@@ -473,7 +572,7 @@ export default function OverviewPage() {
                 <Link
                   className="font-semibold"
                   to={
-                    done.includes(9)
+                    workflow.enabled(9) && done.includes(9)
                       ? `/repository?ontology=${encodeURIComponent(ontology.id)}`
                       : "/ontology"
                   }

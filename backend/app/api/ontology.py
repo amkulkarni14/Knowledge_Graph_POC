@@ -1,3 +1,4 @@
+from hashlib import sha256
 from copy import copy
 from fastapi import APIRouter, Query
 from pydantic import ValidationError
@@ -10,11 +11,13 @@ from kg_pipeline.ontology_compiler import s09_ontology_repository as versions
 from backend.app.core.dependencies import CurrentSession
 from backend.app.dto.models import (Result, Page, DraftRequest, OntologyRequest, ClassRequest,
     AttributesRequest, RenameRequest, RelationshipRequest, AIRequest, ReviewRequest,
-    ApprovalRequest, ActorRequest, RejectRequest, Identifier)
+    ApprovalRequest, ActorRequest, RejectRequest, Identifier, SaveDraftRequest)
 from backend.app.exceptions.handlers import ApiError
 from backend.app.services import ontology as service
 from backend.app.repositories.library import save_working_draft
-from backend.app.services.workflow import execute, operation, require, storage, clear_from
+from backend.app.services.workflow import (execute, operation, require, storage, clear_from, require_enabled,
+                                           same_ontology_model)
+from backend.app.services.workflow_policy import VALIDATION_ONLY
 
 router = APIRouter(prefix="/sessions/{session_id}/ontology", tags=["ontology"])
 
@@ -55,9 +58,24 @@ def revert(session: CurrentSession):
 
 
 @router.post("/draft/save", response_model=Result[Ontology])
-def save(session: CurrentSession):
+def save(session: CurrentSession, body: SaveDraftRequest | None = None):
     with operation(session):
         onto = service.editor(session)
+        if body is not None:
+            onto = onto.model_copy(update={"name": body.name})
+        saved_draft = session.saved_draft
+        if (saved_draft is not None and session.ctx.is_done(5)
+                and same_ontology_model(saved_draft, onto)):
+            if onto.name != saved_draft.name:
+                try:
+                    save_working_draft(session.root, onto)
+                except OSError:
+                    raise ApiError(502, "dependency_failure", "Unable to save the ontology draft") from None
+                session.ctx.manual_ontology = onto
+                session.saved_draft = onto.model_copy(deep=True)
+            session.editor = onto
+            return {"data": onto}
+
         service.check_mappings(session, onto)
         def save(candidate):
             saved = manual.run(candidate, onto=onto)
@@ -66,6 +84,7 @@ def save(session: CurrentSession):
 
         saved = execute(session, 5, save)
         session.saved_draft = saved.model_copy(deep=True)
+        session.editor = saved.model_copy(deep=True)
         return {"data": saved}
 
 
@@ -141,6 +160,7 @@ def remove_relationship(session: CurrentSession, key: str = Query(min_length=1, 
 @router.post("/suggestions", response_model=Result[list[ai.ReviewItem]])
 def suggestions(body: AIRequest, session: CurrentSession):
     with operation(session):
+        require_enabled(session, 6)
         require(session, 5)
         if body.allowed_tables is not None and (not body.allowed_tables or
                 set(body.allowed_tables) - set(session.ctx.catalog.tables)):
@@ -170,6 +190,7 @@ def skip(session: CurrentSession):
 @router.post("/review/preview", response_model=Result[Ontology])
 def preview(body: ReviewRequest, session: CurrentSession):
     with operation(session):
+        require_enabled(session, 7)
         args = service.review_args(session, body)
         candidate = copy(session.ctx)
         candidate.completed = set(candidate.completed)
@@ -180,13 +201,27 @@ def preview(body: ReviewRequest, session: CurrentSession):
 @router.post("/review", response_model=Result[Ontology])
 def apply_review(body: ReviewRequest, session: CurrentSession):
     with operation(session):
+        require_enabled(session, 7)
         return {"data": execute(session, 7, review.run, **service.review_args(session, body))}
 
 
 @router.post("/validate", response_model=Result[dict])
 def validate(session: CurrentSession):
     with operation(session):
-        report = execute(session, 8, validation.run)
+        def validate_saved_draft(candidate):
+            draft = candidate.manual_ontology
+            if draft is None:
+                raise ApiError(409, "no_saved_draft", "Save your draft before validation")
+            report = validation.run(candidate, draft=draft)
+            if report.ok:
+                candidate.validated_ontology = draft.model_copy(deep=True)
+                digest = sha256(draft.model_dump_json().encode("utf-8")).hexdigest()
+                candidate.ontology_validation_digest = digest
+                candidate.log(8, f"Validated build input: {draft.ontology_id} (sha256:{digest})")
+            return report
+
+        policy = session.workflow_policy
+        report = execute(session, 8, validate_saved_draft if policy == VALIDATION_ONLY else validation.run)
         return {"data": {**report.model_dump(mode="json"), "ok": report.ok, "summary": report.summary()}}
 
 
@@ -202,6 +237,7 @@ def validation_result(session: CurrentSession):
 @router.post("/approve", response_model=Result[Ontology])
 def approve(body: ApprovalRequest, session: CurrentSession):
     with operation(session):
+        require_enabled(session, 9)
         require(session, 8)
         onto = session.ctx.hybrid_draft
         if onto.created_by.strip().casefold() != body.author.casefold():
@@ -232,6 +268,7 @@ def get_version(version: int, session: CurrentSession, ontology_id: Identifier):
 @router.post("/versions/{version}/rollback", response_model=Result[Ontology])
 def rollback(version: int, body: ActorRequest, session: CurrentSession, ontology_id: Identifier):
     with operation(session):
+        require_enabled(session, 9)
         require(session, 3, 4)
         repo, old = existing_version(session, ontology_id, version)
         service.check_mappings(session, old)
@@ -243,6 +280,7 @@ def rollback(version: int, body: ActorRequest, session: CurrentSession, ontology
 @router.post("/use-approved", response_model=Result[Ontology])
 def use_approved(session: CurrentSession, ontology_id: Identifier):
     with operation(session):
+        require_enabled(session, 9)
         require(session, 3)
         repo = service.repository(session)
         onto = repo.get_approved(ontology_id)

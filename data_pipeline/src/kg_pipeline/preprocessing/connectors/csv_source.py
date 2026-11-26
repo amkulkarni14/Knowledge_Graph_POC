@@ -528,6 +528,7 @@ def build_csv_source(uploads: Sequence[CsvUpload], limits: UploadLimits | None =
             columns={c.name: ColumnInfo(name=c.name, pg_type=c.sql_type, nullable=c not in t.key,
                                         source_header=c.header) for c in t.cols},
             primary_key=key_names, unique_constraints=unique_cols,
+            source_path=t.filename, relationship_origin="inferred", asset_kind="file",
             foreign_keys=[ForeignKey(columns=[l.column.name], ref_table=l.owner.name,
                                      ref_columns=[l.owner_column.name]) for l in t.links])
         rows[t.name] = [{c.name: c.values[i] for c in t.cols} for i in range(t.nrows)]

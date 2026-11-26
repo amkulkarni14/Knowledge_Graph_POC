@@ -15,6 +15,8 @@ export const useUiStore = create<{
   collapsed: boolean;
   activity: boolean;
   collapsedGroups: string[];
+  scopeDirty: boolean;
+  setScopeDirty: (dirty: boolean) => void;
   toggleSidebar: () => void;
   toggleActivity: () => void;
   toggleGroup: (group: string) => void;
@@ -22,6 +24,8 @@ export const useUiStore = create<{
   collapsed: false,
   activity: false,
   collapsedGroups: [],
+  scopeDirty: false,
+  setScopeDirty: (scopeDirty) => set({ scopeDirty }),
   toggleSidebar: () => set((s) => ({ collapsed: !s.collapsed })),
   toggleActivity: () => set((s) => ({ activity: !s.activity })),
   toggleGroup: (group) =>

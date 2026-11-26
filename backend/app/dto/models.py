@@ -73,6 +73,15 @@ class SessionView(BaseModel):
     job: dict[str, Any] | None
     expires_in_seconds: int
     summary: WorkspaceSummary = Field(default_factory=WorkspaceSummary)
+    updated_at: str | None = None
+    active: bool = True
+    domain_id: UUID | None = None
+    reconnect_required: bool = False
+    historical_stages: list[int] = Field(default_factory=list)
+    recovery_issues: list[str] = Field(default_factory=list)
+    snapshot: dict[str, str] | None = None
+    published_build: dict[str, str] | None = None
+    build_configuration: "BuildRequest | None" = None
 
 
 class ScopeRequest(StrictModel):
@@ -84,9 +93,10 @@ class ScopeRequest(StrictModel):
     sensitive_columns: list[Annotated[str, StringConstraints(max_length=200)]] = Field(default_factory=list, max_length=1000)
     users: list[Text] = Field(default_factory=list, max_length=100)
     later_list: list[Text] = Field(default_factory=list, max_length=100)
+    domain_id: UUID | None = None
 
     def domain(self):
-        return ScopeSheet(**self.model_dump())
+        return ScopeSheet(**self.model_dump(exclude={"domain_id"}))
 
 
 class DomainRequest(ScopeRequest):
@@ -181,6 +191,10 @@ class ApiOntology(Ontology):
 
 class OntologyRequest(StrictModel):
     ontology: ApiOntology
+
+
+class SaveDraftRequest(StrictModel):
+    name: Text
 
 
 class ClassRequest(StrictModel):

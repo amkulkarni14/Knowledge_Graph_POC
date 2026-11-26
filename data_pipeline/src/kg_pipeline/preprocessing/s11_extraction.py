@@ -32,17 +32,26 @@ class ExtractionResult:
         return sum(t["rows"] for t in self.tables.values())
 
 
+class ExtractionLimitError(ValueError):
+    """The selected source exceeds its staging budget."""
+
+
 def run(ctx: PipelineContext, batch_size: int | None = None, progress=None) -> ExtractionResult:
     if ctx.build_plan is None:
         raise RuntimeError("Stage 10 must run first")
     batch_size = batch_size or settings.batch_size
-    onto = ctx.approved_ontology
+    onto = ctx.build_ontology
     wm_cols = {c.mapping.source_table: c.mapping.watermark_column for c in onto.classes
                if c.mapping and c.mapping.watermark_column}
     rows: dict[str, list[dict]] = {}
     stats: dict[str, dict] = {}
     watermarks: dict[str, str] = {}
     plan_tables = ctx.build_plan["tables"]
+    row_limit = getattr(ctx.source, "max_extraction_rows", None)
+    byte_limit = getattr(ctx.source, "max_extraction_bytes", None)
+    extracted = bytes_read = 0
+    if row_limit is not None:
+        batch_size = min(batch_size, 1000)
     for i, (table, cols) in enumerate(plan_tables.items(), start=1):
         info = ctx.catalog.tables[table]
         key_cols = info.primary_key or cols[:1]
@@ -52,6 +61,13 @@ def run(ctx: PipelineContext, batch_size: int | None = None, progress=None) -> E
         rows[table] = []
         for batch in ctx.source.iter_batches(table, read_cols, key_cols, batch_size):
             batches += 1
+            extracted += len(batch)
+            if row_limit is not None and extracted > row_limit:
+                raise ExtractionLimitError("Selection exceeds the extraction row limit")
+            if byte_limit is not None:
+                bytes_read += sum(len(repr(row).encode("utf-8")) for row in batch)
+                if bytes_read > byte_limit:
+                    raise ExtractionLimitError("Selection exceeds the extraction byte limit")
             rows[table].extend(batch)
             last_key = tuple(batch[-1][k] for k in key_cols)
             if progress:

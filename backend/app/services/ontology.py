@@ -8,7 +8,7 @@ from kg_pipeline.ontology_compiler import s07_review_approval as review
 from kg_pipeline.ontology_compiler import s08_ontology_validation as validation
 from kg_pipeline.ontology_compiler import s09_ontology_repository as versions
 from backend.app.exceptions.handlers import ApiError
-from backend.app.services.workflow import clear_from, require
+from backend.app.services.workflow import clear_from, require, same_ontology_model
 
 
 def repository(session):
@@ -57,7 +57,9 @@ def update_editor(session, onto):
     # Re-parse copies because domain assignment itself does not validate fields.
     onto = Ontology.model_validate(onto.model_dump(mode="json"))
     check_mappings(session, onto)
-    clear_from(session.ctx, 5)
+    current = session.editor
+    if current is None or not same_ontology_model(current, onto):
+        clear_from(session.ctx, 5)
     session.editor = onto
     session.sync()
     return onto

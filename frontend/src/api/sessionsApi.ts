@@ -4,6 +4,12 @@ export const sessionsApi = {
   create: (body: Schema<"SessionCreate">) =>
     send<Schema<"SessionView">>("POST", "/sessions", body),
   list: (signal?: AbortSignal) => get<Schema<"SessionView">[]>("/sessions", undefined, signal),
+  workspaces: (signal?: AbortSignal) =>
+    get<Schema<"SessionView">[]>("/workspaces", undefined, signal),
+  reopen: (id: string) =>
+    send<Schema<"SessionView">>("POST", "/workspaces/" + encodeURIComponent(id) + "/reopen"),
+  deleteWorkspace: (id: string) =>
+    send<void>("DELETE", "/workspaces/" + encodeURIComponent(id)),
   read: (id: string, signal?: AbortSignal) =>
     get<Schema<"SessionView">>(sessionPath(id), undefined, signal),
   remove: (id: string) => send<void>("DELETE", sessionPath(id)),
